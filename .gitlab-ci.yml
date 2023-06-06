@@ -38,6 +38,12 @@ kitwareci:check:rate:
     variables:
         DOCKERHUB_USERNAME: kitwareci
 
+kitwareci001:check:rate:
+    extends:
+        - .dockerhub_rate_check
+    variables:
+        DOCKERHUB_USERNAME: kitwareci001
+
 kitwareci002:check:rate:
     extends:
         - .dockerhub_rate_check
