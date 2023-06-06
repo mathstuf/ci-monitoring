@@ -6,13 +6,15 @@ shopt -s extglob
 readonly username="$1"
 shift
 
+readonly project="ratelimitpreview/test"
+
 token="$( eval "echo \${DOCKERHUB_TOKEN_${username}}" )"
 readonly token
 
-pr_token="$( curl --silent --user "$username:$token" "https://auth.docker.io/token?service=registry.docker.io&scope=repository:ratelimitpreview/test:pull" | jq -r .token )"
+pr_token="$( curl --silent --user "$username:$token" "https://auth.docker.io/token?service=registry.docker.io&scope=repository:$project:pull" | jq -r .token )"
 readonly pr_token
 
-curl --silent --head -H "Authorization: Bearer $pr_token" "https://registry-1.docker.io/v2/ratelimitpreview/test/manifests/latest" | tr -d $'\r' > dockerhub-header
+curl --silent --head -H "Authorization: Bearer $pr_token" "https://registry-1.docker.io/v2/$project/manifests/latest" | tr -d $'\r' > dockerhub-header
 
 rate_source="$( grep -i 'docker-ratelimit-source:' dockerhub-header | cut -d' ' -f2 )"
 readonly rate_source
