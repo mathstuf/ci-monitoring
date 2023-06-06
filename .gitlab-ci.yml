@@ -1,0 +1,51 @@
+.dockerhub_rate_check:
+    stage: check
+    rules:
+        # Skip MRs
+        - if: '$CI_MERGE_REQUEST_ID'
+          when: never
+        # Skip non-protected commits and tags.
+        - if: '$CI_COMMIT_REF_PROTECTED != "true" && $CI_COMMIT_TAG == ""'
+          when: never
+        # Run for protected bits in the project.
+        - if: '$CI_PROJECT_PATH == "utils/ci-monitoring"'
+          when: on_success
+        # Ignore everything else.
+        - when: never
+    interruptible: true
+    allow_failure:
+        exit_codes:
+            - 2 # Rate limits are being approached.
+    environment:
+        name: dockerhub-rate-check
+
+    image: "fedora:38"
+    tags:
+        - linux-x86_64
+        - docker
+        - build
+
+    script:
+        - dnf install -y --setopt=install_weak_deps=False jq curl
+        - ./check_rate_limit.sh "$DOCKERHUB_USERNAME"
+
+stages:
+    - check
+
+kitwareci:check:rate:
+    extends:
+        - .dockerhub_rate_check
+    variables:
+        DOCKERHUB_USERNAME: kitwareci
+
+kitwareci002:check:rate:
+    extends:
+        - .dockerhub_rate_check
+    variables:
+        DOCKERHUB_USERNAME: kitwareci002
+
+kitwareci003:check:rate:
+    extends:
+        - .dockerhub_rate_check
+    variables:
+        DOCKERHUB_USERNAME: kitwareci003
