@@ -65,7 +65,7 @@ print_rates () {
 }
 
 if [ -z "$limit" ] && [ -z "$remaining" ]; then
-    echo "Rate limit:           none"
+    echo "Rate limit          : none"
 else
     print_rates "total    " "$limit"
     print_rates "remaining" "$remaining" remaining_count
