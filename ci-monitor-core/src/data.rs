@@ -10,9 +10,15 @@
 
 mod blob;
 mod instance;
+mod job_artifact;
 
 pub use blob::Blob;
 pub use blob::BlobReference;
 pub use blob::ContentHash;
 
 pub use instance::Instance;
+
+pub use job_artifact::ArtifactExpiration;
+pub use job_artifact::ArtifactKind;
+pub use job_artifact::ArtifactState;
+pub use job_artifact::JobArtifact;
