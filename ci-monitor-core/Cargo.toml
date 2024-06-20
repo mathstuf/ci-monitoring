@@ -9,3 +9,5 @@ repository.workspace = true
 edition.workspace = true
 
 [dependencies]
+digest = "0.10"
+sha2 = "0.10"

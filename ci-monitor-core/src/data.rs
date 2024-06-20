@@ -4,11 +4,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! CI monitor core
+//! Data structures.
 //!
-//! This crate defines core data types and traits for working with CI systems in order to monitor
-//! them for overall health.
+//! With some convenience methods for managing them.
 
-#![warn(missing_docs)]
+mod blob;
 
-pub mod data;
+pub use blob::Blob;
+pub use blob::BlobReference;
+pub use blob::ContentHash;
