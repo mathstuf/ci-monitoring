@@ -1,0 +1,11 @@
+[workspace]
+members = [
+    "ci-monitor-core",
+]
+resolver = "2"
+
+[workspace.package]
+authors = ["Ben Boeckel <ben.boeckel@kitware.com>"]
+license = "MIT/Apache-2.0"
+repository = "https://gitlab.kitware.com/utils/ci-monitoring"
+edition = "2021"
