@@ -16,6 +16,7 @@ mod pipeline;
 mod pipeline_schedule;
 mod pipeline_variables;
 mod project;
+mod runner_host;
 mod user;
 
 pub use blob::Blob;
@@ -43,5 +44,7 @@ pub use pipeline_variables::PipelineVariableType;
 pub use pipeline_variables::PipelineVariables;
 
 pub use project::Project;
+
+pub use runner_host::RunnerHost;
 
 pub use user::User;
