@@ -11,6 +11,7 @@
 mod blob;
 mod instance;
 mod job_artifact;
+mod merge_request;
 mod pipeline_schedule;
 mod pipeline_variables;
 mod project;
@@ -26,6 +27,9 @@ pub use job_artifact::ArtifactExpiration;
 pub use job_artifact::ArtifactKind;
 pub use job_artifact::ArtifactState;
 pub use job_artifact::JobArtifact;
+
+pub use merge_request::MergeRequest;
+pub use merge_request::MergeRequestStatus;
 
 pub use pipeline_schedule::PipelineSchedule;
 
