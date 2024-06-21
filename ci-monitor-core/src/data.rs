@@ -12,6 +12,7 @@ mod blob;
 mod instance;
 mod job_artifact;
 mod project;
+mod user;
 
 pub use blob::Blob;
 pub use blob::BlobReference;
@@ -25,3 +26,5 @@ pub use job_artifact::ArtifactState;
 pub use job_artifact::JobArtifact;
 
 pub use project::Project;
+
+pub use user::User;
