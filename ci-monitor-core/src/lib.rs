@@ -12,3 +12,6 @@
 #![warn(missing_docs)]
 
 pub mod data;
+mod lookup;
+
+pub use self::lookup::Lookup;
