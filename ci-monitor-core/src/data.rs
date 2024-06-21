@@ -11,6 +11,7 @@
 mod blob;
 mod instance;
 mod job_artifact;
+mod pipeline_variables;
 mod project;
 mod user;
 
@@ -24,6 +25,10 @@ pub use job_artifact::ArtifactExpiration;
 pub use job_artifact::ArtifactKind;
 pub use job_artifact::ArtifactState;
 pub use job_artifact::JobArtifact;
+
+pub use pipeline_variables::PipelineVariable;
+pub use pipeline_variables::PipelineVariableType;
+pub use pipeline_variables::PipelineVariables;
 
 pub use project::Project;
 
