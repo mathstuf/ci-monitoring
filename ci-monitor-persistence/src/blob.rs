@@ -4,6 +4,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use async_trait::async_trait;
 use ci_monitor_core::data::{Blob, BlobReference};
 use thiserror::Error;
 
@@ -79,4 +80,27 @@ pub trait BlobPersistence {
     }
     /// Erase a blob from storage.
     fn erase(&self, blob: BlobReference) -> Result<(), BlobPersistenceError>;
+}
+
+/// An asynchronous persistence store for blobs.
+#[async_trait]
+pub trait BlobPersistenceAsync {
+    /// Persist a blob into storage.
+    async fn store(&self, blob: &Blob) -> Result<BlobReference, BlobPersistenceError>;
+    /// Whether the storage contains a blob reference or not.
+    async fn contains(&self, blob: &BlobReference) -> Result<bool, BlobPersistenceError>;
+    /// Fetch a blob from storage.
+    async fn fetch(&self, blob: &BlobReference) -> Result<Blob, BlobPersistenceError>;
+    /// Verify a blob in the storage.
+    async fn verify(&self, blob: &BlobReference) -> Result<(), BlobPersistenceVerifyError> {
+        let data = self.fetch(blob).await?;
+        let new_ref = BlobReference::for_blob(&data, blob.algo());
+        if new_ref == *blob {
+            Ok(())
+        } else {
+            Err(BlobPersistenceVerifyError::invalid(new_ref))
+        }
+    }
+    /// Erase a blob from storage.
+    async fn erase(&self, blob: BlobReference) -> Result<(), BlobPersistenceError>;
 }

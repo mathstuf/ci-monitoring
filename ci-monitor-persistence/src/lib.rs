@@ -14,6 +14,7 @@ mod blob;
 mod objects;
 
 pub use self::blob::BlobPersistence;
+pub use self::blob::BlobPersistenceAsync;
 pub use self::blob::BlobPersistenceError;
 pub use self::blob::BlobPersistenceVerifyError;
 
