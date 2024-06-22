@@ -9,6 +9,7 @@
 //! With some convenience methods for managing them.
 
 mod blob;
+mod environment;
 mod instance;
 mod job_artifact;
 mod merge_request;
@@ -23,6 +24,10 @@ mod user;
 pub use blob::Blob;
 pub use blob::BlobReference;
 pub use blob::ContentHash;
+
+pub use environment::Environment;
+pub use environment::EnvironmentState;
+pub use environment::EnvironmentTier;
 
 pub use instance::Instance;
 
