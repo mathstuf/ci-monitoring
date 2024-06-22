@@ -9,6 +9,7 @@
 //! With some convenience methods for managing them.
 
 mod blob;
+mod deployment;
 mod environment;
 mod instance;
 mod job_artifact;
@@ -24,6 +25,9 @@ mod user;
 pub use blob::Blob;
 pub use blob::BlobReference;
 pub use blob::ContentHash;
+
+pub use deployment::Deployment;
+pub use deployment::DeploymentStatus;
 
 pub use environment::Environment;
 pub use environment::EnvironmentState;
