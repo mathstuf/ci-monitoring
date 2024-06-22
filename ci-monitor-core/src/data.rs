@@ -12,6 +12,7 @@ mod blob;
 mod deployment;
 mod environment;
 mod instance;
+mod job;
 mod job_artifact;
 mod merge_request;
 mod pipeline;
@@ -34,6 +35,9 @@ pub use environment::EnvironmentState;
 pub use environment::EnvironmentTier;
 
 pub use instance::Instance;
+
+pub use job::Job;
+pub use job::JobState;
 
 pub use job_artifact::ArtifactExpiration;
 pub use job_artifact::ArtifactKind;
