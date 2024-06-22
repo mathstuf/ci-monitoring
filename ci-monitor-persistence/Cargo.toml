@@ -1,0 +1,13 @@
+[package]
+name = "ci-monitor-persistence"
+version = "0.1.0"
+workspace = ".."
+readme = "README.md"
+keywords = ["persistence", "ci", "monitoring"]
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+
+[dependencies]
+ci-monitor-core = { version = "0.1.0", path = "../ci-monitor-core" }
