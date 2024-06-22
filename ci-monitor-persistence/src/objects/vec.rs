@@ -1,0 +1,100 @@
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+use std::fmt::Debug;
+use std::marker::PhantomData;
+
+use ci_monitor_core::data::{
+    Deployment, Environment, Instance, Job, JobArtifact, MergeRequest, Pipeline, PipelineSchedule,
+    Project, Runner, RunnerHost, User,
+};
+use ci_monitor_core::Lookup;
+
+/// Storage for CI monitoring data backed by `Vec`.
+///
+/// Intended only for in-memory storage; no actual persistence is offered as removing data is
+/// infeasible due to having to rewrite all indices to account for holes.
+#[derive(Clone)]
+pub struct VecLookup {
+    deployments: Vec<Deployment<Self>>,
+    environments: Vec<Environment<Self>>,
+    instances: Vec<Instance>,
+    jobs: Vec<Job<Self>>,
+    job_artifacts: Vec<JobArtifact<Self>>,
+    merge_requests: Vec<MergeRequest<Self>>,
+    pipelines: Vec<Pipeline<Self>>,
+    pipeline_schedules: Vec<PipelineSchedule<Self>>,
+    projects: Vec<Project<Self>>,
+    runners: Vec<Runner<Self>>,
+    runner_hosts: Vec<RunnerHost>,
+    users: Vec<User<Self>>,
+}
+
+impl Debug for VecLookup {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("VecLookup")
+            .field("#deployments", &self.deployments.len())
+            .field("#environments", &self.environments.len())
+            .field("#instances", &self.instances.len())
+            .field("#jobs", &self.jobs.len())
+            .field("#job_artifacts", &self.job_artifacts.len())
+            .field("#merge_requests", &self.merge_requests.len())
+            .field("#pipelines", &self.pipelines.len())
+            .field("#pipeline_schedules", &self.pipeline_schedules.len())
+            .field("#projects", &self.projects.len())
+            .field("#runners", &self.runners.len())
+            .field("#runner_hosts", &self.runner_hosts.len())
+            .field("#users", &self.users.len())
+            .finish()
+    }
+}
+
+/// The index of `VecLookup`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VecIndex<T> {
+    idx: usize,
+    _phantom: PhantomData<T>,
+}
+
+impl<T> VecIndex<T> {
+    fn new(idx: usize) -> Self {
+        Self {
+            idx,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+macro_rules! impl_lookup {
+    ($t:ty, $field:ident) => {
+        impl Lookup<$t> for VecLookup {
+            type Index = VecIndex<$t>;
+
+            fn lookup<'a>(&'a self, idx: &'a Self::Index) -> Option<&'a $t> {
+                self.$field.get(idx.idx)
+            }
+
+            fn store(&mut self, data: $t) -> Self::Index {
+                let idx = self.$field.len();
+                self.$field.push(data);
+                Self::Index::new(idx.into())
+            }
+        }
+    };
+}
+
+impl_lookup!(Deployment<Self>, deployments);
+impl_lookup!(Environment<Self>, environments);
+impl_lookup!(Instance, instances);
+impl_lookup!(Job<Self>, jobs);
+impl_lookup!(JobArtifact<Self>, job_artifacts);
+impl_lookup!(MergeRequest<Self>, merge_requests);
+impl_lookup!(Pipeline<Self>, pipelines);
+impl_lookup!(PipelineSchedule<Self>, pipeline_schedules);
+impl_lookup!(Project<Self>, projects);
+impl_lookup!(Runner<Self>, runners);
+impl_lookup!(RunnerHost, runner_hosts);
+impl_lookup!(User<Self>, users);

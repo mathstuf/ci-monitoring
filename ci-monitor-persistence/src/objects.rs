@@ -5,6 +5,10 @@
 // except according to those terms.
 
 mod arc;
+mod vec;
 
 pub use arc::ArcIndex;
 pub use arc::ArcLookup;
+
+pub use vec::VecIndex;
+pub use vec::VecLookup;

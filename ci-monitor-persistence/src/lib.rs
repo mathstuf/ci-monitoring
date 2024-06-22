@@ -14,3 +14,6 @@ mod objects;
 
 pub use self::objects::ArcIndex;
 pub use self::objects::ArcLookup;
+
+pub use self::objects::VecIndex;
+pub use self::objects::VecLookup;
