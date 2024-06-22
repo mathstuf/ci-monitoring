@@ -8,7 +8,11 @@ use std::borrow::Cow;
 
 use chrono::{DateTime, Utc};
 
-use crate::data::BlobReference;
+use crate::data::{
+    BlobReference, Deployment, Environment, Instance, Job, MergeRequest, Pipeline,
+    PipelineSchedule, Project, Runner, RunnerHost, User,
+};
+use crate::Lookup;
 
 /// The state of an artifact within the monitoring infrastructure.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -115,15 +119,33 @@ pub enum ArtifactExpiration {
 /// An artifact from a job.
 #[derive(Debug, Clone)]
 #[non_exhaustive]
-pub struct JobArtifact {
+pub struct JobArtifact<L>
+where
+    L: Lookup<Deployment<L>>,
+    L: Lookup<Environment<L>>,
+    L: Lookup<Instance>,
+    L: Lookup<Job<L>>,
+    L: Lookup<MergeRequest<L>>,
+    L: Lookup<Pipeline<L>>,
+    L: Lookup<PipelineSchedule<L>>,
+    L: Lookup<Project<L>>,
+    L: Lookup<Runner<L>>,
+    L: Lookup<RunnerHost>,
+    L: Lookup<User<L>>,
+{
     /// The state of the job artifact.
     pub state: ArtifactState,
     /// The type of job artifact.
     pub kind: ArtifactKind,
     /// When the artifact expires from the forge.
     pub expire_at: ArtifactExpiration,
+    /// The name of the artifact.
+    pub name: String,
     /// The reference to the blob.
     pub blob: Option<BlobReference>,
     /// The size of the artifact.
     pub size: u64,
+
+    /// The job the artifact is for.
+    pub job: <L as Lookup<Job<L>>>::Index,
 }
