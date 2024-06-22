@@ -10,7 +10,12 @@
 
 #![warn(missing_docs)]
 
+mod blob;
 mod objects;
+
+pub use self::blob::BlobPersistence;
+pub use self::blob::BlobPersistenceError;
+pub use self::blob::BlobPersistenceVerifyError;
 
 pub use self::objects::ArcIndex;
 pub use self::objects::ArcLookup;
