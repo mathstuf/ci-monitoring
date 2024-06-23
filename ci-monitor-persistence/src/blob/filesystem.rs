@@ -13,6 +13,8 @@ use ci_monitor_core::data::{BlobReference, ContentHash};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+mod persistence_sync;
+
 const MAX_BREAKS: usize = 3;
 const MAX_SHARDS: usize = MAX_BREAKS + 1;
 
