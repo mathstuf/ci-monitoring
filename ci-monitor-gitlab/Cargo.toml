@@ -1,0 +1,15 @@
+[package]
+name = "ci-monitor-gitlab"
+version = "0.1.0"
+readme = "README.md"
+keywords = ["gitlab", "ci", "monitoring"]
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+
+[dependencies]
+ci-monitor-core = { version = "0.1.0", path = "../ci-monitor-core" }
+ci-monitor-forge = { version = "0.1.0", path = "../ci-monitor-forge" }
+
+async-trait = "~0.1.9"

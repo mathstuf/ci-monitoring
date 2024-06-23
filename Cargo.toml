@@ -2,6 +2,7 @@
 members = [
     "ci-monitor-core",
     "ci-monitor-forge",
+    "ci-monitor-gitlab",
     "ci-monitor-persistence",
 ]
 resolver = "2"
