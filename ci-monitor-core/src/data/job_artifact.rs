@@ -146,6 +146,9 @@ where
     /// The size of the artifact.
     pub size: u64,
 
+    /// A unique ID for the artifact.
+    pub unique_id: u64,
+
     /// The job the artifact is for.
     pub job: <L as Lookup<Job<L>>>::Index,
 }

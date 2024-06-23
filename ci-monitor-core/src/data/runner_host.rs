@@ -27,6 +27,9 @@ pub struct RunnerHost {
     /// An estimate of the cost of tasks on this host per hour.
     pub estimated_cost_per_hour: Option<f64>,
 
+    /// A unique ID for the runner host.
+    pub unique_id: u64,
+
     // Monitoring metadata.
     /// When the monitoring tool first fetched information.
     pub cim_fetched_at: DateTime<Utc>,
