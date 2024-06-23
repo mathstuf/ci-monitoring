@@ -8,6 +8,8 @@ use async_trait::async_trait;
 use ci_monitor_core::data::{Blob, BlobReference};
 use thiserror::Error;
 
+pub mod filesystem;
+
 /// Errors when interacting with blob persistence.
 #[derive(Debug, Error)]
 pub enum BlobPersistenceError {

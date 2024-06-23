@@ -18,6 +18,11 @@ pub use self::blob::BlobPersistenceAsync;
 pub use self::blob::BlobPersistenceError;
 pub use self::blob::BlobPersistenceVerifyError;
 
+pub use self::blob::filesystem::Filesystem;
+pub use self::blob::filesystem::FilesystemError;
+pub use self::blob::filesystem::Sharding;
+pub use self::blob::filesystem::ShardingError;
+
 pub use self::objects::ArcIndex;
 pub use self::objects::ArcLookup;
 
