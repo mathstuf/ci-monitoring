@@ -13,6 +13,10 @@
 #![warn(missing_docs)]
 
 mod forge;
+mod tasks;
 
-pub use self::forge::Forge;
 pub use self::forge::ForgeCore;
+
+pub use self::tasks::ForgeTask;
+pub use self::tasks::MaintenanceTask;
+pub use self::tasks::RunnerHostData;
