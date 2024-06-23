@@ -11,6 +11,7 @@
 #![warn(missing_docs)]
 
 mod blob;
+mod discoverable;
 mod objects;
 
 pub use self::blob::BlobPersistence;
@@ -22,6 +23,8 @@ pub use self::blob::filesystem::Filesystem;
 pub use self::blob::filesystem::FilesystemError;
 pub use self::blob::filesystem::Sharding;
 pub use self::blob::filesystem::ShardingError;
+
+pub use self::discoverable::DiscoverableLookup;
 
 pub use self::objects::ArcIndex;
 pub use self::objects::ArcLookup;
