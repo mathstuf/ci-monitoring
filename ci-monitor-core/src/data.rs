@@ -35,6 +35,8 @@ pub use environment::EnvironmentState;
 pub use environment::EnvironmentTier;
 
 pub use instance::Instance;
+pub use instance::InstanceBuilder;
+pub use instance::InstanceBuilderError;
 
 pub use job::Job;
 pub use job::JobState;
