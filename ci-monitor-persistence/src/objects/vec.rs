@@ -13,6 +13,8 @@ use ci_monitor_core::data::{
 };
 use ci_monitor_core::Lookup;
 
+use crate::DiscoverableLookup;
+
 /// Storage for CI monitoring data backed by `Vec`.
 ///
 /// Intended only for in-memory storage; no actual persistence is offered as removing data is
@@ -68,6 +70,33 @@ impl<T> VecIndex<T> {
     }
 }
 
+trait HasId {
+    fn has_id(&self, id: u64) -> bool;
+}
+
+macro_rules! impl_has_id_by {
+    ($t:ty, $field:ident) => {
+        impl HasId for $t {
+            fn has_id(&self, id: u64) -> bool {
+                self.$field == id
+            }
+        }
+    };
+}
+
+impl_has_id_by!(Deployment<VecLookup>, forge_id);
+impl_has_id_by!(Environment<VecLookup>, forge_id);
+impl_has_id_by!(Instance, unique_id);
+impl_has_id_by!(Job<VecLookup>, forge_id);
+impl_has_id_by!(JobArtifact<VecLookup>, unique_id);
+impl_has_id_by!(MergeRequest<VecLookup>, forge_id);
+impl_has_id_by!(Pipeline<VecLookup>, forge_id);
+impl_has_id_by!(PipelineSchedule<VecLookup>, forge_id);
+impl_has_id_by!(Project<VecLookup>, forge_id);
+impl_has_id_by!(Runner<VecLookup>, forge_id);
+impl_has_id_by!(RunnerHost, unique_id);
+impl_has_id_by!(User<VecLookup>, forge_id);
+
 macro_rules! impl_lookup {
     ($t:ty, $field:ident) => {
         impl Lookup<$t> for VecLookup {
@@ -81,6 +110,20 @@ macro_rules! impl_lookup {
                 let idx = self.$field.len();
                 self.$field.push(data);
                 Self::Index::new(idx.into())
+            }
+        }
+
+        impl DiscoverableLookup<$t> for VecLookup {
+            fn all_indices(&self) -> Vec<Self::Index> {
+                (0..self.$field.len()).map(Self::Index::new).collect()
+            }
+
+            fn find(&self, id: u64) -> Option<Self::Index> {
+                self.$field
+                    .iter()
+                    .enumerate()
+                    .find(|(_, ent)| ent.has_id(id))
+                    .map(|(idx, _)| Self::Index::new(idx))
             }
         }
     };
