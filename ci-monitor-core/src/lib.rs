@@ -14,4 +14,7 @@
 pub mod data;
 mod lookup;
 
+#[cfg(test)]
+pub mod test;
+
 pub use self::lookup::Lookup;
