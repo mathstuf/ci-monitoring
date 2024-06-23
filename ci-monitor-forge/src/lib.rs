@@ -11,3 +11,8 @@
 //! the required information.
 
 #![warn(missing_docs)]
+
+mod forge;
+
+pub use self::forge::Forge;
+pub use self::forge::ForgeCore;
