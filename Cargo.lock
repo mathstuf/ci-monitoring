@@ -62,7 +62,9 @@ dependencies = [
 name = "ci-monitor-forge"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "ci-monitor-core",
+ "thiserror",
 ]
 
 [[package]]

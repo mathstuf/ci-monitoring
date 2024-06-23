@@ -15,7 +15,10 @@
 mod forge;
 mod tasks;
 
+pub use self::forge::Forge;
 pub use self::forge::ForgeCore;
+pub use self::forge::ForgeError;
+pub use self::forge::ForgeTaskOutcome;
 
 pub use self::tasks::ForgeTask;
 pub use self::tasks::MaintenanceTask;

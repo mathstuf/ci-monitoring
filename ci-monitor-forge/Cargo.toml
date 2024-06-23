@@ -9,4 +9,7 @@ repository.workspace = true
 edition.workspace = true
 
 [dependencies]
+thiserror = "1.0.4"
+
+async-trait = "~0.1.9"
 ci-monitor-core = { version = "0.1.0", path = "../ci-monitor-core" }
