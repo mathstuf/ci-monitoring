@@ -71,12 +71,18 @@ impl<T> VecIndex<T> {
 }
 
 trait HasId {
+    fn id(&self) -> u64;
     fn has_id(&self, id: u64) -> bool;
 }
 
 macro_rules! impl_has_id_by {
     ($t:ty, $field:ident) => {
         impl HasId for $t {
+            #[allow(clippy::misnamed_getters)]
+            fn id(&self) -> u64 {
+                self.$field
+            }
+
             fn has_id(&self, id: u64) -> bool {
                 self.$field == id
             }
@@ -107,9 +113,19 @@ macro_rules! impl_lookup {
             }
 
             fn store(&mut self, data: $t) -> Self::Index {
-                let idx = self.$field.len();
-                self.$field.push(data);
-                Self::Index::new(idx.into())
+                if let Some((idx, entry)) = self
+                    .$field
+                    .iter_mut()
+                    .enumerate()
+                    .find(|(_, e)| e.has_id(data.id()))
+                {
+                    *entry = data;
+                    Self::Index::new(idx)
+                } else {
+                    let idx = self.$field.len();
+                    self.$field.push(data);
+                    Self::Index::new(idx.into())
+                }
             }
         }
 
