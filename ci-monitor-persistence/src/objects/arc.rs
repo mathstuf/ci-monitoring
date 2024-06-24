@@ -54,7 +54,7 @@ where
 
 impl<T> Lookup<T> for ArcLookup
 where
-    T: Debug,
+    T: Debug + Send + Sync,
 {
     type Index = ArcIndex<T>;
 

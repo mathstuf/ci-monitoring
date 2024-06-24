@@ -9,7 +9,7 @@ use std::fmt::Debug;
 /// A trait to lookup other data based on an index.
 pub trait Lookup<T> {
     /// The type used to lookup instances of `T`.
-    type Index: Debug + Clone;
+    type Index: Debug + Clone + Send + Sync;
 
     /// Find an instance of `T` given an index.
     fn lookup<'a>(&'a self, idx: &'a Self::Index) -> Option<&'a T>;
