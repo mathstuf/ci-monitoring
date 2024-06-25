@@ -1,57 +1,131 @@
-.dockerhub_rate_check:
-    stage: check
-    rules:
-        # Skip MRs
-        - if: '$CI_MERGE_REQUEST_ID'
-          when: never
-        # Skip non-protected commits and tags.
-        - if: '$CI_COMMIT_REF_PROTECTED != "true" && $CI_COMMIT_TAG == ""'
-          when: never
-        # Run for protected bits in the project.
-        - if: '$CI_PROJECT_PATH == "utils/ci-monitoring"'
-          when: on_success
-        # Ignore everything else.
-        - when: never
-    interruptible: true
-    allow_failure:
-        exit_codes:
-            - 2 # Rate limits are being approached.
-    environment:
-        name: dockerhub-rate-check
+include:
+    # Metadata shared by many jobs
+    - local: .gitlab/rules.yml
+    - local: .gitlab/artifacts.yml
 
-    image: "fedora:38"
-    tags:
-        - linux-x86_64
-        - docker
-        - build
-
-    script:
-        - dnf install -y --setopt=install_weak_deps=False jq curl
-        - ./check_rate_limit.sh "$DOCKERHUB_USERNAME"
+    # Builds.
+    - local: .gitlab/cargo.yml
 
 stages:
-    - check
+    - prep
+    - build
+    - test
 
-kitwareci:check:rate:
-    extends:
-        - .dockerhub_rate_check
-    variables:
-        DOCKERHUB_USERNAME: kitwareci
+.rust_stable:
+    image: "rust:latest"
 
-kitwareci001:check:rate:
-    extends:
-        - .dockerhub_rate_check
     variables:
-        DOCKERHUB_USERNAME: kitwareci001
+        CARGO_UPDATE_POLICY: newest
+        GIT_CLONE_PATH: $CI_BUILDS_DIR/rust
 
-kitwareci002:check:rate:
-    extends:
-        - .dockerhub_rate_check
-    variables:
-        DOCKERHUB_USERNAME: kitwareci002
+.rust_nightly:
+    extends: .rust_stable
 
-kitwareci003:check:rate:
+    image: "rustlang/rust:nightly"
+
+cache-newest:prep:
     extends:
-        - .dockerhub_rate_check
+        - .rust_stable
+        - .cargo_fetch_job
+        - .cargo_build_tags
+        - .cargo_fetch_artifacts
+        - .run_automatically
+
+clippy:build:
+    extends:
+        - .rust_stable
+        - .cargo_clippy_job
+        - .cargo_build_tags
+        - .run_automatically
+    dependencies:
+        - cache-newest:prep
+    needs:
+        - cache-newest:prep
+
+.cargo_audit_ignore:
     variables:
-        DOCKERHUB_USERNAME: kitwareci003
+        # Ignored advisories
+        CARGO_AUDIT_ARGS: ""
+
+audit-newest:build:
+    extends:
+        - .rust_stable
+        - .cargo_audit_job
+        - .cargo_build_tags
+        - .run_automatically
+        - .cargo_audit_ignore
+    dependencies:
+        - cache-newest:prep
+    needs:
+        - cache-newest:prep
+
+stable:build:
+    extends:
+        - .rust_stable
+        - .cargo_build_job
+        - .cargo_build_tags
+        - .cargo_build_artifacts
+        - .run_automatically
+    dependencies:
+        - cache-newest:prep
+    needs:
+        - cache-newest:prep
+
+stable:test:
+    extends:
+        - .rust_stable
+        - .cargo_test_job
+        - .cargo_build_tags
+        - .cargo_test_artifacts
+        - .run_automatically
+    dependencies:
+        - stable:build
+    needs:
+        - stable:build
+
+nightly:build:
+    extends:
+        - .rust_nightly
+        - .cargo_build_job
+        - .cargo_build_tags
+        - .cargo_build_artifacts
+        - .run_automatically
+    dependencies:
+        - cache-newest:prep
+    needs:
+        - cache-newest:prep
+
+nightly:test:
+    extends:
+        - .rust_nightly
+        - .cargo_test_job
+        - .cargo_build_tags
+        - .cargo_test_artifacts
+        - .run_automatically
+    dependencies:
+        - nightly:build
+    needs:
+        - nightly:build
+
+tarpaulin:build:
+    extends:
+        - .rust_stable
+        - .cargo_tarpaulin_build_job
+        - .cargo_build_tags
+        - .cargo_build_artifacts
+        - .run_automatically
+    dependencies:
+        - cache-newest:prep
+    needs:
+        - cache-newest:prep
+
+tarpaulin:test:
+    extends:
+        - .rust_stable
+        - .cargo_tarpaulin_test_job
+        - .cargo_privileged_tags
+        - .run_automatically
+    dependencies:
+        - tarpaulin:build
+    needs:
+        - tarpaulin:build
