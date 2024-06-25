@@ -10,6 +10,7 @@
 
 #![warn(missing_docs)]
 
+mod errors;
 mod forge;
 mod lookup;
 
