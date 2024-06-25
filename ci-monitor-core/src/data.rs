@@ -60,6 +60,8 @@ pub use pipeline_variables::PipelineVariableType;
 pub use pipeline_variables::PipelineVariables;
 
 pub use project::Project;
+pub use project::ProjectBuilder;
+pub use project::ProjectBuilderError;
 
 pub use runner::Runner;
 pub use runner::RunnerProtectionLevel;
