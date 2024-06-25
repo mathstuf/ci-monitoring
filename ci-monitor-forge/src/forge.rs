@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use ci_monitor_core::data::Instance;
+use ci_monitor_core::Lookup;
 use thiserror::Error;
 
 use crate::ForgeTask;
@@ -40,6 +41,14 @@ pub enum ForgeError {
         /// Details of the error.
         details: String,
     },
+    /// Failure to find an object by a stored index.
+    #[error("failed to find index for {}: {}", type_, idx)]
+    Lookup {
+        /// The type being searched for.
+        type_: &'static str,
+        /// A description of the index.
+        idx: String,
+    },
     /// The forge does not handle the specified task.
     #[error("task is not handled")]
     Unhandled {
@@ -58,6 +67,19 @@ pub enum ForgeError {
         /// Details of the error.
         details: String,
     },
+}
+
+impl ForgeError {
+    /// Create a failure to lookup error from an index.
+    pub fn lookup<L, T>(idx: &<L as Lookup<T>>::Index) -> Self
+    where
+        L: Lookup<T>,
+    {
+        Self::Lookup {
+            type_: std::any::type_name::<T>(),
+            idx: format!("{:?}", idx),
+        }
+    }
 }
 
 /// A trait describing basic `Forge` capabilities.
