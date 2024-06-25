@@ -41,6 +41,7 @@ struct ParentProject {
 #[derive(Debug, Deserialize)]
 struct GitlabProject {
     // Data to fill in the storage.
+    id: u64,
     name: String,
     web_url: String,
     path_with_namespace: String,
@@ -52,9 +53,9 @@ struct GitlabProject {
     forked_from_project: Option<ParentProject>,
 }
 
-pub async fn update_project<L>(
+async fn update_project_impl<L>(
     forge: &GitlabForge<L>,
-    project: u64,
+    gl_project: GitlabProject,
 ) -> Result<ForgeTaskOutcome, ForgeError>
 where
     L: DiscoverableLookup<Project<L>>,
@@ -63,17 +64,7 @@ where
 {
     let mut outcome = ForgeTaskOutcome::default();
     let mut add_task = |task| outcome.additional_tasks.push(task);
-
-    let gl_project: GitlabProject = {
-        let endpoint = gitlab::api::projects::Project::builder()
-            .project(project)
-            .build()
-            .unwrap();
-        endpoint
-            .query_async(forge.gitlab())
-            .await
-            .map_err(errors::forge_error)?
-    };
+    let project = gl_project.id;
 
     if gl_project.merge_requests_access_level.is_enabled() {
         add_task(ForgeTask::DiscoverMergeRequests {
@@ -137,4 +128,50 @@ where
     forge.storage_mut().store(project_entry);
 
     Ok(outcome)
+}
+
+pub async fn update_project<L>(
+    forge: &GitlabForge<L>,
+    project: u64,
+) -> Result<ForgeTaskOutcome, ForgeError>
+where
+    L: DiscoverableLookup<Project<L>>,
+    L: Lookup<Instance>,
+    L: Clone + Send + Sync,
+{
+    let gl_project: GitlabProject = {
+        let endpoint = gitlab::api::projects::Project::builder()
+            .project(project)
+            .build()
+            .unwrap();
+        endpoint
+            .query_async(forge.gitlab())
+            .await
+            .map_err(errors::forge_error)?
+    };
+
+    update_project_impl(forge, gl_project).await
+}
+
+pub async fn update_project_by_name<L>(
+    forge: &GitlabForge<L>,
+    project: String,
+) -> Result<ForgeTaskOutcome, ForgeError>
+where
+    L: DiscoverableLookup<Project<L>>,
+    L: Lookup<Instance>,
+    L: Clone + Send + Sync,
+{
+    let gl_project: GitlabProject = {
+        let endpoint = gitlab::api::projects::Project::builder()
+            .project(project)
+            .build()
+            .unwrap();
+        endpoint
+            .query_async(forge.gitlab())
+            .await
+            .map_err(errors::forge_error)?
+    };
+
+    update_project_impl(forge, gl_project).await
 }

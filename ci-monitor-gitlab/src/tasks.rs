@@ -7,3 +7,4 @@
 mod project;
 
 pub use self::project::update_project;
+pub use self::project::update_project_by_name;
