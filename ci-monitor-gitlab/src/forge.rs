@@ -10,6 +10,7 @@ use async_trait::async_trait;
 use ci_monitor_core::data::Instance;
 use ci_monitor_core::Lookup;
 use ci_monitor_forge::{Forge, ForgeCore, ForgeError, ForgeTask, ForgeTaskOutcome};
+use gitlab::AsyncGitlab;
 
 use crate::GitlabLookup;
 
@@ -19,6 +20,7 @@ where
     L: Lookup<Instance>,
 {
     url: String,
+    gitlab: AsyncGitlab,
     storage: RwLock<L>,
     instance_idx: <L as Lookup<Instance>>::Index,
 }
@@ -27,6 +29,10 @@ impl<L> GitlabForge<L>
 where
     L: Lookup<Instance>,
 {
+    pub(crate) fn gitlab(&self) -> &AsyncGitlab {
+        &self.gitlab
+    }
+
     pub(crate) fn storage(&self) -> RwLockReadGuard<L> {
         self.storage.read().unwrap()
     }

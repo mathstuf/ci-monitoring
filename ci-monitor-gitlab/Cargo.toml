@@ -12,5 +12,6 @@ edition.workspace = true
 ci-monitor-core = { version = "0.1.0", path = "../ci-monitor-core" }
 ci-monitor-forge = { version = "0.1.0", path = "../ci-monitor-forge" }
 ci-monitor-persistence = { version = "0.1.0", path = "../ci-monitor-persistence" }
+gitlab = { version = "0.1700.1", default-features = false, features = ["client_api"] }
 
 async-trait = "~0.1.9"
