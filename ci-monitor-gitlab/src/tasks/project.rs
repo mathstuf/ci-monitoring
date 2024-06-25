@@ -4,6 +4,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ops::Deref;
+
 use chrono::Utc;
 use ci_monitor_core::data::{Instance, Project};
 use ci_monitor_core::Lookup;
@@ -57,7 +59,7 @@ pub async fn update_project<L>(
 where
     L: DiscoverableLookup<Project<L>>,
     L: Lookup<Instance>,
-    L: Send + Sync,
+    L: Clone + Send + Sync,
 {
     let mut outcome = ForgeTaskOutcome::default();
     let mut add_task = |task| outcome.additional_tasks.push(task);
@@ -103,7 +105,36 @@ where
         })
     }
 
-    // TODO: update storage
+    let update = move |project: &mut Project<L>| {
+        project.name = gl_project.name;
+        project.url = gl_project.web_url;
+        project.instance_path = gl_project.path_with_namespace;
+
+        project.cim_refreshed_at = Utc::now();
+    };
+
+    // Create a project entry.
+    let project_entry = if let Some(idx) = forge.storage().find(project) {
+        if let Some(existing) = <L as Lookup<Project<L>>>::lookup(forge.storage().deref(), &idx) {
+            let mut updated = existing.clone();
+            update(&mut updated);
+            updated
+        } else {
+            return Err(ForgeError::lookup::<L, Project<L>>(&idx));
+        }
+    } else {
+        let mut project = Project::builder()
+            .forge_id(project)
+            .instance(forge.instance_index())
+            .build()
+            .unwrap();
+
+        update(&mut project);
+        project
+    };
+
+    // Store the project in the storage.
+    forge.storage_mut().store(project_entry);
 
     Ok(outcome)
 }
