@@ -12,6 +12,7 @@ use ci_monitor_core::Lookup;
 use ci_monitor_forge::{Forge, ForgeCore, ForgeError, ForgeTask, ForgeTaskOutcome};
 use gitlab::AsyncGitlab;
 
+use crate::tasks;
 use crate::GitlabLookup;
 
 /// A CI monitoring task handler for GitLab hosts.
@@ -67,6 +68,9 @@ where
     /// Run a task.
     async fn run_task_async(&self, task: ForgeTask) -> Result<ForgeTaskOutcome, ForgeError> {
         match task {
+            ForgeTask::UpdateProject {
+                project,
+            } => tasks::update_project(self, project).await,
             _ => {
                 Err(ForgeError::Unknown {
                     task,

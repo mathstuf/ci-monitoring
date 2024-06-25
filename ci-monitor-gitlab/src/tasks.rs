@@ -4,17 +4,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! CI monitoring for GitLab
-//!
-//! This crate provides CI monitoring with GitLab as a source of data.
+mod project;
 
-#![warn(missing_docs)]
-
-mod errors;
-mod forge;
-mod lookup;
-mod tasks;
-
-pub use forge::GitlabForge;
-
-use lookup::GitlabLookup;
+pub use self::project::update_project;
