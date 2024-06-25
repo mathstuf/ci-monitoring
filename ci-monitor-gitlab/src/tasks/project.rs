@@ -7,7 +7,7 @@
 use chrono::Utc;
 use ci_monitor_core::data::{Instance, Project};
 use ci_monitor_core::Lookup;
-use ci_monitor_forge::{ForgeError, ForgeTaskOutcome};
+use ci_monitor_forge::{ForgeError, ForgeTask, ForgeTaskOutcome};
 use ci_monitor_persistence::DiscoverableLookup;
 use gitlab::api::AsyncQuery;
 use serde::Deserialize;
@@ -73,10 +73,36 @@ where
             .map_err(errors::forge_error)?
     };
 
-    // TODO: queue MR discovery
-    // TODO: queue pipeline discovery
-    // TODO: queue environments discovery
-    // TODO: parent project
+    if gl_project.merge_requests_access_level.is_enabled() {
+        add_task(ForgeTask::DiscoverMergeRequests {
+            project,
+        });
+    }
+
+    if gl_project.builds_access_level.is_enabled() {
+        add_task(ForgeTask::DiscoverPipelineSchedules {
+            project,
+        });
+        add_task(ForgeTask::DiscoverPipelines {
+            project,
+        });
+    }
+
+    if gl_project.environments_access_level.is_enabled() {
+        add_task(ForgeTask::DiscoverEnvironments {
+            project,
+        });
+        add_task(ForgeTask::DiscoverDeployments {
+            project,
+        });
+    }
+
+    if let Some(parent) = gl_project.forked_from_project {
+        add_task(ForgeTask::UpdateProject {
+            project: parent.id,
+        })
+    }
+
     // TODO: update storage
 
     Ok(outcome)
