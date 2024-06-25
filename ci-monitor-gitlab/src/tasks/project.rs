@@ -4,12 +4,51 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use chrono::Utc;
 use ci_monitor_core::data::{Instance, Project};
 use ci_monitor_core::Lookup;
 use ci_monitor_forge::{ForgeError, ForgeTaskOutcome};
 use ci_monitor_persistence::DiscoverableLookup;
+use gitlab::api::AsyncQuery;
+use serde::Deserialize;
 
+use crate::errors;
 use crate::GitlabForge;
+
+#[derive(Debug, Deserialize, Clone, Copy)]
+enum AccessLevel {
+    #[serde(rename = "enabled")]
+    Enabled,
+    #[serde(rename = "private")]
+    Private,
+    #[serde(rename = "disabled")]
+    Disabled,
+}
+
+impl AccessLevel {
+    fn is_enabled(self) -> bool {
+        matches!(self, Self::Enabled | Self::Private)
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct ParentProject {
+    id: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct GitlabProject {
+    // Data to fill in the storage.
+    name: String,
+    web_url: String,
+    path_with_namespace: String,
+
+    // Options which can discover more work.
+    merge_requests_access_level: AccessLevel,
+    builds_access_level: AccessLevel,
+    environments_access_level: AccessLevel,
+    forked_from_project: Option<ParentProject>,
+}
 
 pub async fn update_project<L>(
     forge: &GitlabForge<L>,
@@ -23,7 +62,17 @@ where
     let mut outcome = ForgeTaskOutcome::default();
     let mut add_task = |task| outcome.additional_tasks.push(task);
 
-    // TODO: fetch the project
+    let gl_project: GitlabProject = {
+        let endpoint = gitlab::api::projects::Project::builder()
+            .project(project)
+            .build()
+            .unwrap();
+        endpoint
+            .query_async(forge.gitlab())
+            .await
+            .map_err(errors::forge_error)?
+    };
+
     // TODO: queue MR discovery
     // TODO: queue pipeline discovery
     // TODO: queue environments discovery
