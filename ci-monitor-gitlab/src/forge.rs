@@ -4,16 +4,46 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+
 use async_trait::async_trait;
 use ci_monitor_core::data::Instance;
+use ci_monitor_core::Lookup;
 use ci_monitor_forge::{Forge, ForgeCore, ForgeError, ForgeTask, ForgeTaskOutcome};
 
+use crate::GitlabLookup;
+
 /// A CI monitoring task handler for GitLab hosts.
-pub struct GitlabForge {
+pub struct GitlabForge<L>
+where
+    L: Lookup<Instance>,
+{
     url: String,
+    storage: RwLock<L>,
+    instance_idx: <L as Lookup<Instance>>::Index,
 }
 
-impl ForgeCore for GitlabForge {
+impl<L> GitlabForge<L>
+where
+    L: Lookup<Instance>,
+{
+    pub(crate) fn storage(&self) -> RwLockReadGuard<L> {
+        self.storage.read().unwrap()
+    }
+
+    pub(crate) fn storage_mut(&self) -> RwLockWriteGuard<L> {
+        self.storage.write().unwrap()
+    }
+
+    pub(crate) fn instance_index(&self) -> <L as Lookup<Instance>>::Index {
+        self.instance_idx.clone()
+    }
+}
+
+impl<L> ForgeCore for GitlabForge<L>
+where
+    L: Lookup<Instance>,
+{
     fn instance(&self) -> Instance {
         Instance::builder()
             .forge("gitlab")
@@ -24,7 +54,10 @@ impl ForgeCore for GitlabForge {
 }
 
 #[async_trait]
-impl Forge for GitlabForge {
+impl<L> Forge for GitlabForge<L>
+where
+    L: GitlabLookup<L> + Clone + Send + Sync,
+{
     /// Run a task.
     async fn run_task_async(&self, task: ForgeTask) -> Result<ForgeTaskOutcome, ForgeError> {
         match task {
