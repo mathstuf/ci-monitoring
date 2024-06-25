@@ -11,5 +11,6 @@ edition.workspace = true
 [dependencies]
 ci-monitor-core = { version = "0.1.0", path = "../ci-monitor-core" }
 ci-monitor-forge = { version = "0.1.0", path = "../ci-monitor-forge" }
+ci-monitor-persistence = { version = "0.1.0", path = "../ci-monitor-persistence" }
 
 async-trait = "~0.1.9"

@@ -75,6 +75,7 @@ dependencies = [
  "async-trait",
  "ci-monitor-core",
  "ci-monitor-forge",
+ "ci-monitor-persistence",
 ]
 
 [[package]]

@@ -11,5 +11,8 @@
 #![warn(missing_docs)]
 
 mod forge;
+mod lookup;
 
 pub use forge::GitlabForge;
+
+use lookup::GitlabLookup;
