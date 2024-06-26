@@ -70,3 +70,5 @@ pub use runner::RunnerType;
 pub use runner_host::RunnerHost;
 
 pub use user::User;
+pub use user::UserBuilder;
+pub use user::UserBuilderError;
