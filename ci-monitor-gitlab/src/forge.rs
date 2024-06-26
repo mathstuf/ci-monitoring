@@ -74,6 +74,12 @@ where
             ForgeTask::UpdateProjectByName {
                 project,
             } => tasks::update_project_by_name(self, project).await,
+            ForgeTask::UpdateUserByName {
+                user,
+            } => tasks::update_user_by_name(self, user).await,
+            ForgeTask::UpdateUser {
+                user,
+            } => tasks::update_user(self, user).await,
             _ => {
                 Err(ForgeError::Unknown {
                     task,

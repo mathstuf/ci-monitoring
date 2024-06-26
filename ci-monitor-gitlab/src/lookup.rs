@@ -22,7 +22,7 @@ pub trait GitlabLookup<L>:
     + DiscoverableLookup<Project<L>>
     + Lookup<Runner<L>>
     + Lookup<RunnerHost>
-    + Lookup<User<L>>
+    + DiscoverableLookup<User<L>>
     + DiscoverableLookup<Instance>
 where
     L: Lookup<Deployment<L>>,
