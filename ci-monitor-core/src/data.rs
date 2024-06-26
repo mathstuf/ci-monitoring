@@ -64,6 +64,8 @@ pub use project::ProjectBuilder;
 pub use project::ProjectBuilderError;
 
 pub use runner::Runner;
+pub use runner::RunnerBuilder;
+pub use runner::RunnerBuilderError;
 pub use runner::RunnerProtectionLevel;
 pub use runner::RunnerType;
 
