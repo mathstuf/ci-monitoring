@@ -6,12 +6,14 @@
 
 use chrono::{DateTime, Utc};
 use derive_builder::Builder;
+use perfect_derive::perfect_derive;
 
 use crate::data::{BlobReference, Instance};
 use crate::Lookup;
 
 /// A user account on an instance.
-#[derive(Debug, Builder, Clone)]
+#[derive(Builder)]
+#[perfect_derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct User<L>
 where

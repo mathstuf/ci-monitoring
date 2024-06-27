@@ -5,6 +5,7 @@
 // except according to those terms.
 
 use chrono::{DateTime, Utc};
+use perfect_derive::perfect_derive;
 
 use crate::data::{Instance, MergeRequest, PipelineSchedule, PipelineVariables, Project, User};
 use crate::Lookup;
@@ -84,7 +85,7 @@ pub enum PipelineStatus {
 }
 
 /// A pipeline which performs CI tasks for a project.
-#[derive(Debug, Clone)]
+#[perfect_derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct Pipeline<L>
 where

@@ -6,6 +6,7 @@
 
 use chrono::{DateTime, Utc};
 use derive_builder::Builder;
+use perfect_derive::perfect_derive;
 
 use crate::data::Instance;
 use crate::Lookup;
@@ -14,7 +15,8 @@ use crate::Lookup;
 ///
 /// This represents an instance of a project. There may be multiple instances of the project on
 /// different instances or even on a given instance.
-#[derive(Debug, Builder, Clone)]
+#[derive(Builder)]
+#[perfect_derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct Project<L>
 where

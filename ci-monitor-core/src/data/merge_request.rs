@@ -6,6 +6,7 @@
 
 use chrono::{DateTime, Utc};
 use derive_builder::Builder;
+use perfect_derive::perfect_derive;
 
 use crate::data::{Instance, Project, User};
 use crate::Lookup;
@@ -23,7 +24,8 @@ pub enum MergeRequestStatus {
 }
 
 /// A merge request.
-#[derive(Debug, Builder, Clone)]
+#[derive(Builder)]
+#[perfect_derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct MergeRequest<L>
 where

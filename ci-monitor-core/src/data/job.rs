@@ -5,6 +5,7 @@
 // except according to those terms.
 
 use chrono::{DateTime, Utc};
+use perfect_derive::perfect_derive;
 
 use crate::data::{
     Deployment, Environment, Instance, MergeRequest, Pipeline, PipelineSchedule, PipelineVariables,
@@ -37,7 +38,7 @@ pub enum JobState {
 }
 
 /// A job within a pipeline.
-#[derive(Debug, Clone)]
+#[perfect_derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct Job<L>
 where

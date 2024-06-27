@@ -5,6 +5,7 @@
 // except according to those terms.
 
 use chrono::{DateTime, Utc};
+use perfect_derive::perfect_derive;
 
 use crate::data::{Environment, Instance, MergeRequest, Pipeline, PipelineSchedule, Project, User};
 use crate::Lookup;
@@ -28,7 +29,7 @@ pub enum DeploymentStatus {
 }
 
 /// A deployment into an environment.
-#[derive(Debug, Clone)]
+#[perfect_derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct Deployment<L>
 where

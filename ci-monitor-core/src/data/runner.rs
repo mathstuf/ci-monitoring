@@ -6,6 +6,7 @@
 
 use chrono::{DateTime, Utc};
 use derive_builder::Builder;
+use perfect_derive::perfect_derive;
 
 use crate::data::{Instance, Project, RunnerHost};
 use crate::Lookup;
@@ -33,7 +34,8 @@ pub enum RunnerProtectionLevel {
 }
 
 /// A runner which can perform jobs for CI tasks.
-#[derive(Debug, Builder, Clone)]
+#[derive(Builder)]
+#[perfect_derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct Runner<L>
 where

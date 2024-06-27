@@ -4,6 +4,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use perfect_derive::perfect_derive;
 use std::borrow::Cow;
 
 use chrono::{DateTime, Utc};
@@ -117,7 +118,7 @@ pub enum ArtifactExpiration {
 }
 
 /// An artifact from a job.
-#[derive(Debug, Clone)]
+#[perfect_derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct JobArtifact<L>
 where

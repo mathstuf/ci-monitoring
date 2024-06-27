@@ -6,12 +6,14 @@
 
 use chrono::{DateTime, Utc};
 use derive_builder::Builder;
+use perfect_derive::perfect_derive;
 
 use crate::data::{Instance, PipelineVariables, Project, User};
 use crate::Lookup;
 
 /// A pipeline schedule.
-#[derive(Debug, Builder, Clone)]
+#[derive(Builder)]
+#[perfect_derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct PipelineSchedule<L>
 where
