@@ -43,18 +43,15 @@ impl<T> Clone for TestIndex<T> {
     }
 }
 
-impl<T> Debug for TestIndex<T>
-where
-    T: Debug,
-{
+impl<T> Debug for TestIndex<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self.arc)
+        write!(f, "index for {}", std::any::type_name::<T>())
     }
 }
 
 impl<T> Lookup<T> for TestLookup
 where
-    T: Debug + Send + Sync,
+    T: Send + Sync,
 {
     /// The type used to lookup instances of `T`.
     type Index = TestIndex<T>;
