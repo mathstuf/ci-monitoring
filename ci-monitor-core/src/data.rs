@@ -56,6 +56,8 @@ pub use pipeline::PipelineSource;
 pub use pipeline::PipelineStatus;
 
 pub use pipeline_schedule::PipelineSchedule;
+pub use pipeline_schedule::PipelineScheduleBuilder;
+pub use pipeline_schedule::PipelineScheduleBuilderError;
 
 pub use pipeline_variables::PipelineVariable;
 pub use pipeline_variables::PipelineVariableType;
