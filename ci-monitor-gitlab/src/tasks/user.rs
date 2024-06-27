@@ -36,7 +36,7 @@ pub async fn update_user<L>(
 where
     L: DiscoverableLookup<User<L>>,
     L: Lookup<Instance>,
-    L: Clone + Send + Sync,
+    L: Send + Sync,
 {
     let gl_user: GitlabUser = {
         let endpoint = gitlab::api::users::User::builder()
@@ -103,7 +103,7 @@ pub async fn update_user_by_name<L>(
 where
     L: DiscoverableLookup<User<L>>,
     L: Lookup<Instance>,
-    L: Clone + Send + Sync,
+    L: Send + Sync,
 {
     let gl_user: GitlabUserSearch = {
         let endpoint = gitlab::api::users::Users::builder()

@@ -60,7 +60,7 @@ async fn update_project_impl<L>(
 where
     L: DiscoverableLookup<Project<L>>,
     L: Lookup<Instance>,
-    L: Clone + Send + Sync,
+    L: Send + Sync,
 {
     let mut outcome = ForgeTaskOutcome::default();
     let mut add_task = |task| outcome.additional_tasks.push(task);
@@ -137,7 +137,7 @@ pub async fn update_project<L>(
 where
     L: DiscoverableLookup<Project<L>>,
     L: Lookup<Instance>,
-    L: Clone + Send + Sync,
+    L: Send + Sync,
 {
     let gl_project: GitlabProject = {
         let endpoint = gitlab::api::projects::Project::builder()
@@ -160,7 +160,7 @@ pub async fn update_project_by_name<L>(
 where
     L: DiscoverableLookup<Project<L>>,
     L: Lookup<Instance>,
-    L: Clone + Send + Sync,
+    L: Send + Sync,
 {
     let gl_project: GitlabProject = {
         let endpoint = gitlab::api::projects::Project::builder()
