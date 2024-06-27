@@ -53,7 +53,7 @@ where
 
 impl<L> Project<L>
 where
-    L: Lookup<Instance> + Clone,
+    L: Lookup<Instance>,
 {
     /// Create a builder for the structure.
     pub fn builder() -> ProjectBuilder<L> {

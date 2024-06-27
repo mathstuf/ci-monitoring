@@ -127,7 +127,6 @@ where
     L: Lookup<Instance>,
     L: Lookup<Project<L>>,
     L: Lookup<RunnerHost>,
-    L: Clone,
 {
     /// Create a builder for the structure.
     pub fn builder() -> RunnerBuilder<L> {

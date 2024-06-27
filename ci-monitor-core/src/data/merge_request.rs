@@ -82,7 +82,6 @@ where
     L: Lookup<Instance>,
     L: Lookup<Project<L>>,
     L: Lookup<User<L>>,
-    L: Clone,
 {
     /// Create a builder for the structure.
     pub fn builder() -> MergeRequestBuilder<L> {

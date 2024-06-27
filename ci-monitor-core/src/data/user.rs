@@ -50,7 +50,7 @@ where
 
 impl<L> User<L>
 where
-    L: Lookup<Instance> + Clone,
+    L: Lookup<Instance>,
 {
     /// Create a builder for the structure.
     pub fn builder() -> UserBuilder<L> {
