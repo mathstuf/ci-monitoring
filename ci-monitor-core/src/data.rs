@@ -47,6 +47,8 @@ pub use job_artifact::ArtifactState;
 pub use job_artifact::JobArtifact;
 
 pub use merge_request::MergeRequest;
+pub use merge_request::MergeRequestBuilder;
+pub use merge_request::MergeRequestBuilderError;
 pub use merge_request::MergeRequestStatus;
 
 pub use pipeline::Pipeline;
