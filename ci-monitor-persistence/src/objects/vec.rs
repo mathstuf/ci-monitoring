@@ -12,6 +12,7 @@ use ci_monitor_core::data::{
     Project, Runner, RunnerHost, User,
 };
 use ci_monitor_core::Lookup;
+use perfect_derive::perfect_derive;
 
 use crate::DiscoverableLookup;
 
@@ -55,10 +56,16 @@ impl Debug for VecLookup {
 }
 
 /// The index of `VecLookup`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[perfect_derive(Debug, Copy, PartialEq, Eq)]
 pub struct VecIndex<T> {
     idx: usize,
     _phantom: PhantomData<T>,
+}
+
+impl<T> Clone for VecIndex<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl<T> VecIndex<T> {
