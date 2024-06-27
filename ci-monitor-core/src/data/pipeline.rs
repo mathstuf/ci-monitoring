@@ -5,6 +5,7 @@
 // except according to those terms.
 
 use chrono::{DateTime, Utc};
+use derive_builder::Builder;
 use perfect_derive::perfect_derive;
 
 use crate::data::{Instance, MergeRequest, PipelineSchedule, PipelineVariables, Project, User};
@@ -85,7 +86,9 @@ pub enum PipelineStatus {
 }
 
 /// A pipeline which performs CI tasks for a project.
+#[derive(Builder)]
 #[perfect_derive(Debug, Clone)]
+#[builder(pattern = "owned")]
 #[non_exhaustive]
 pub struct Pipeline<L>
 where
@@ -98,30 +101,39 @@ where
 {
     // Pipeline metadata.
     /// The name of the pipeline.
+    #[builder(default)]
     pub name: Option<String>,
 
     // Repository metadata.
     /// The project the pipeline is associated with.
     pub project: <L as Lookup<Project<L>>>::Index,
     /// The commit the pipeline is building.
+    #[builder(setter(into))]
     pub sha: String,
     /// The previous commit the pipeline built.
+    #[builder(default, setter(into))]
     pub previous_sha: Option<String>,
     /// The refname the pipeline is building.
+    #[builder(default, setter(into))]
     pub refname: Option<String>,
     /// The stable refname for the pipeline.
+    #[builder(default, setter(into))]
     pub stable_refname: Option<String>,
 
     // Execution metadata.
     /// The reason the pipeline was created.
     pub source: PipelineSource,
     /// The schedule which triggered the pipeline.
+    #[builder(default)]
     pub schedule: Option<<L as Lookup<PipelineSchedule<L>>>::Index>,
     /// The parent pipeline.
+    #[builder(default)]
     pub parent_pipeline: Option<<L as Lookup<Pipeline<L>>>::Index>,
     /// The merge request associated with a pipeline.
+    #[builder(default)]
     pub merge_request: Option<<L as Lookup<MergeRequest<L>>>::Index>,
     /// Variables for the pipeline.
+    #[builder(default)]
     pub variables: PipelineVariables,
     /// The user that created the pipeline.
     pub user: <L as Lookup<User<L>>>::Index,
@@ -130,29 +142,304 @@ where
     /// The status of the pipeline.
     pub status: PipelineStatus,
     /// The code coverage reported by the pipeline.
+    #[builder(default)]
     pub coverage: Option<f64>,
 
     // Forge metadata.
     /// The ID of the pipeline.
     pub forge_id: u64,
     /// The URL of the pipeline webpage.
+    #[builder(setter(into))]
     pub url: String,
     /// Whether the pipeline is archived or not.
     ///
     /// Archived pipelines are essentially read-only.
+    #[builder(default)]
     pub archived: bool,
     /// When the pipeline was created.
     pub created_at: DateTime<Utc>,
     /// When the pipeline was last updated.
     pub updated_at: DateTime<Utc>,
     /// When the pipeline started.
+    #[builder(default)]
     pub started_at: Option<DateTime<Utc>>,
     /// When the pipeline completed.
+    #[builder(default)]
     pub finished_at: Option<DateTime<Utc>>,
 
     // Monitoring metadata.
     /// When the monitoring tool first fetched information.
+    #[builder(default = "Utc::now()", setter(skip))]
     pub cim_fetched_at: DateTime<Utc>,
     /// When the monitoring tool last updated this information.
+    #[builder(default = "Utc::now()", setter(skip))]
     pub cim_refreshed_at: DateTime<Utc>,
+}
+
+impl<L> Pipeline<L>
+where
+    L: Lookup<Instance>,
+    L: Lookup<MergeRequest<L>>,
+    L: Lookup<Pipeline<L>>,
+    L: Lookup<PipelineSchedule<L>>,
+    L: Lookup<Project<L>>,
+    L: Lookup<User<L>>,
+{
+    /// Create a builder for the structure.
+    pub fn builder() -> PipelineBuilder<L> {
+        PipelineBuilder::default()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::Utc;
+
+    use crate::data::{
+        Instance, Pipeline, PipelineBuilderError, PipelineSource, PipelineStatus, Project, User,
+    };
+    use crate::Lookup;
+
+    use crate::test::TestLookup;
+
+    fn project(lookup: &mut TestLookup) -> Project<TestLookup> {
+        let instance = Instance::builder()
+            .unique_id(0)
+            .forge("forge")
+            .url("url")
+            .build()
+            .unwrap();
+        let idx = lookup.store(instance);
+
+        Project::builder()
+            .forge_id(0)
+            .instance(idx)
+            .build()
+            .unwrap()
+    }
+
+    fn user(instance: <TestLookup as Lookup<Instance>>::Index) -> User<TestLookup> {
+        User::builder()
+            .forge_id(0)
+            .instance(instance)
+            .build()
+            .unwrap()
+    }
+
+    #[test]
+    fn project_is_required() {
+        let mut lookup = TestLookup::default();
+        let proj = project(&mut lookup);
+        let user = user(proj.instance.clone());
+        let user_idx = lookup.store(user);
+
+        let err = Pipeline::<TestLookup>::builder()
+            .sha("0000000000000000000000000000000000000000")
+            .source(PipelineSource::Schedule)
+            .user(user_idx)
+            .status(PipelineStatus::Created)
+            .forge_id(0)
+            .url("url")
+            .created_at(Utc::now())
+            .updated_at(Utc::now())
+            .build()
+            .unwrap_err();
+        crate::test::assert_missing_field!(err, PipelineBuilderError, "project");
+    }
+
+    #[test]
+    fn sha_is_required() {
+        let mut lookup = TestLookup::default();
+        let proj = project(&mut lookup);
+        let user = user(proj.instance.clone());
+        let proj_idx = lookup.store(proj);
+        let user_idx = lookup.store(user);
+
+        let err = Pipeline::<TestLookup>::builder()
+            .project(proj_idx)
+            .source(PipelineSource::Schedule)
+            .user(user_idx)
+            .status(PipelineStatus::Created)
+            .forge_id(0)
+            .url("url")
+            .created_at(Utc::now())
+            .updated_at(Utc::now())
+            .build()
+            .unwrap_err();
+        crate::test::assert_missing_field!(err, PipelineBuilderError, "sha");
+    }
+
+    #[test]
+    fn source_is_required() {
+        let mut lookup = TestLookup::default();
+        let proj = project(&mut lookup);
+        let user = user(proj.instance.clone());
+        let proj_idx = lookup.store(proj);
+        let user_idx = lookup.store(user);
+
+        let err = Pipeline::<TestLookup>::builder()
+            .project(proj_idx)
+            .sha("0000000000000000000000000000000000000000")
+            .user(user_idx)
+            .status(PipelineStatus::Created)
+            .forge_id(0)
+            .url("url")
+            .created_at(Utc::now())
+            .updated_at(Utc::now())
+            .build()
+            .unwrap_err();
+        crate::test::assert_missing_field!(err, PipelineBuilderError, "source");
+    }
+
+    #[test]
+    fn user_is_required() {
+        let mut lookup = TestLookup::default();
+        let proj = project(&mut lookup);
+        let proj_idx = lookup.store(proj);
+
+        let err = Pipeline::<TestLookup>::builder()
+            .project(proj_idx)
+            .sha("0000000000000000000000000000000000000000")
+            .source(PipelineSource::Schedule)
+            .status(PipelineStatus::Created)
+            .forge_id(0)
+            .url("url")
+            .created_at(Utc::now())
+            .updated_at(Utc::now())
+            .build()
+            .unwrap_err();
+        crate::test::assert_missing_field!(err, PipelineBuilderError, "user");
+    }
+
+    #[test]
+    fn status_is_required() {
+        let mut lookup = TestLookup::default();
+        let proj = project(&mut lookup);
+        let user = user(proj.instance.clone());
+        let proj_idx = lookup.store(proj);
+        let user_idx = lookup.store(user);
+
+        let err = Pipeline::<TestLookup>::builder()
+            .project(proj_idx)
+            .sha("0000000000000000000000000000000000000000")
+            .source(PipelineSource::Schedule)
+            .user(user_idx)
+            .forge_id(0)
+            .url("url")
+            .created_at(Utc::now())
+            .updated_at(Utc::now())
+            .build()
+            .unwrap_err();
+        crate::test::assert_missing_field!(err, PipelineBuilderError, "status");
+    }
+
+    #[test]
+    fn forge_id_is_required() {
+        let mut lookup = TestLookup::default();
+        let proj = project(&mut lookup);
+        let user = user(proj.instance.clone());
+        let proj_idx = lookup.store(proj);
+        let user_idx = lookup.store(user);
+
+        let err = Pipeline::<TestLookup>::builder()
+            .project(proj_idx)
+            .sha("0000000000000000000000000000000000000000")
+            .source(PipelineSource::Schedule)
+            .user(user_idx)
+            .status(PipelineStatus::Created)
+            .url("url")
+            .created_at(Utc::now())
+            .updated_at(Utc::now())
+            .build()
+            .unwrap_err();
+        crate::test::assert_missing_field!(err, PipelineBuilderError, "forge_id");
+    }
+
+    #[test]
+    fn url_is_required() {
+        let mut lookup = TestLookup::default();
+        let proj = project(&mut lookup);
+        let user = user(proj.instance.clone());
+        let proj_idx = lookup.store(proj);
+        let user_idx = lookup.store(user);
+
+        let err = Pipeline::<TestLookup>::builder()
+            .project(proj_idx)
+            .sha("0000000000000000000000000000000000000000")
+            .source(PipelineSource::Schedule)
+            .user(user_idx)
+            .status(PipelineStatus::Created)
+            .forge_id(0)
+            .created_at(Utc::now())
+            .updated_at(Utc::now())
+            .build()
+            .unwrap_err();
+        crate::test::assert_missing_field!(err, PipelineBuilderError, "url");
+    }
+
+    #[test]
+    fn created_at_is_required() {
+        let mut lookup = TestLookup::default();
+        let proj = project(&mut lookup);
+        let user = user(proj.instance.clone());
+        let proj_idx = lookup.store(proj);
+        let user_idx = lookup.store(user);
+
+        let err = Pipeline::<TestLookup>::builder()
+            .project(proj_idx)
+            .sha("0000000000000000000000000000000000000000")
+            .source(PipelineSource::Schedule)
+            .user(user_idx)
+            .status(PipelineStatus::Created)
+            .forge_id(0)
+            .url("url")
+            .updated_at(Utc::now())
+            .build()
+            .unwrap_err();
+        crate::test::assert_missing_field!(err, PipelineBuilderError, "created_at");
+    }
+
+    #[test]
+    fn updated_at_is_required() {
+        let mut lookup = TestLookup::default();
+        let proj = project(&mut lookup);
+        let user = user(proj.instance.clone());
+        let proj_idx = lookup.store(proj);
+        let user_idx = lookup.store(user);
+
+        let err = Pipeline::<TestLookup>::builder()
+            .project(proj_idx)
+            .sha("0000000000000000000000000000000000000000")
+            .source(PipelineSource::Schedule)
+            .user(user_idx)
+            .status(PipelineStatus::Created)
+            .forge_id(0)
+            .url("url")
+            .created_at(Utc::now())
+            .build()
+            .unwrap_err();
+        crate::test::assert_missing_field!(err, PipelineBuilderError, "updated_at");
+    }
+
+    #[test]
+    fn sufficient_fields() {
+        let mut lookup = TestLookup::default();
+        let proj = project(&mut lookup);
+        let user = user(proj.instance.clone());
+        let proj_idx = lookup.store(proj);
+        let user_idx = lookup.store(user);
+
+        Pipeline::<TestLookup>::builder()
+            .project(proj_idx)
+            .sha("0000000000000000000000000000000000000000")
+            .source(PipelineSource::Schedule)
+            .user(user_idx)
+            .status(PipelineStatus::Created)
+            .forge_id(0)
+            .url("url")
+            .created_at(Utc::now())
+            .updated_at(Utc::now())
+            .build()
+            .unwrap();
+    }
 }

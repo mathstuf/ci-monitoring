@@ -52,6 +52,8 @@ pub use merge_request::MergeRequestBuilderError;
 pub use merge_request::MergeRequestStatus;
 
 pub use pipeline::Pipeline;
+pub use pipeline::PipelineBuilder;
+pub use pipeline::PipelineBuilderError;
 pub use pipeline::PipelineSource;
 pub use pipeline::PipelineStatus;
 
