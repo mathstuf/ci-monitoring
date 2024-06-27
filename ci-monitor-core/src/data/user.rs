@@ -14,6 +14,7 @@ use crate::Lookup;
 /// A user account on an instance.
 #[derive(Builder)]
 #[perfect_derive(Debug, Clone)]
+#[builder(pattern = "owned")]
 #[non_exhaustive]
 pub struct User<L>
 where

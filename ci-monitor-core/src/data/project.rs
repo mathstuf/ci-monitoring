@@ -17,6 +17,7 @@ use crate::Lookup;
 /// different instances or even on a given instance.
 #[derive(Builder)]
 #[perfect_derive(Debug, Clone)]
+#[builder(pattern = "owned")]
 #[non_exhaustive]
 pub struct Project<L>
 where

@@ -8,6 +8,7 @@ use derive_builder::Builder;
 
 /// An instance of a forge which hosts projects.
 #[derive(Debug, Builder, Clone)]
+#[builder(pattern = "owned")]
 #[non_exhaustive]
 pub struct Instance {
     /// A unique ID for the instance.

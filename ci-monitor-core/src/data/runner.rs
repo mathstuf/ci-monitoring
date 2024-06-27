@@ -36,6 +36,7 @@ pub enum RunnerProtectionLevel {
 /// A runner which can perform jobs for CI tasks.
 #[derive(Builder)]
 #[perfect_derive(Debug, Clone)]
+#[builder(pattern = "owned")]
 #[non_exhaustive]
 pub struct Runner<L>
 where

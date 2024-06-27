@@ -14,6 +14,7 @@ use crate::Lookup;
 /// A pipeline schedule.
 #[derive(Builder)]
 #[perfect_derive(Debug, Clone)]
+#[builder(pattern = "owned")]
 #[non_exhaustive]
 pub struct PipelineSchedule<L>
 where
