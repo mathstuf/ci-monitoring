@@ -4,8 +4,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::collections::VecDeque;
 use std::error::Error;
 
+use ci_monitor_forge::{Forge, ForgeTask};
 use ci_monitor_gitlab::gitlab;
 use ci_monitor_gitlab::GitlabForge;
 use ci_monitor_persistence::VecLookup;
@@ -32,7 +34,26 @@ async fn try_main() -> Result<(), Box<dyn Error>> {
         .await
         .unwrap();
     let storage = VecLookup::default();
-    let _ = GitlabForge::new("gitlab.kitware.com", gitlab, storage);
+    let forge = GitlabForge::new("gitlab.kitware.com", gitlab, storage);
+
+    let mut tasks: VecDeque<ForgeTask> = VecDeque::new();
+    tasks.push_back(ForgeTask::DiscoverRunners {});
+    tasks.push_back(ForgeTask::UpdateProject {
+        project: 13,
+    });
+
+    while let Some(task) = tasks.pop_front() {
+        println!("performing task: {:?}", task);
+        let res = forge.run_task_async(task).await;
+        match res {
+            Ok(outcome) => {
+                tasks.extend(outcome.additional_tasks);
+            },
+            Err(err) => {
+                println!("failed: {:?}", err);
+            },
+        }
+    }
 
     Ok(())
 }

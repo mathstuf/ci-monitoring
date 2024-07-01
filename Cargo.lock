@@ -187,6 +187,7 @@ dependencies = [
 name = "ci-monitor"
 version = "0.1.0"
 dependencies = [
+ "ci-monitor-forge",
  "ci-monitor-gitlab",
  "ci-monitor-persistence",
  "clap",
