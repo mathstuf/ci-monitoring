@@ -213,7 +213,7 @@ struct GitlabPipelineDetails {
     sha: String,
     previous_sha: Option<String>,
     #[serde(rename = "ref")]
-    ref_: String,
+    ref_: Option<String>,
     source: GitlabPipelineSource,
     user: Option<GitlabUser>,
     status: GitlabPipelineStatus,
@@ -326,7 +326,7 @@ where
             .project(project_idx)
             .sha(gl_pipeline.sha)
             .previous_sha(gl_pipeline.previous_sha)
-            .refname(gl_pipeline.ref_)
+            .refname(gl_pipeline.ref_.unwrap_or_else(|| "refs/UNKNOWN".into()))
             .stable_refname(Some(format!("refs/pipelines/{}", gl_pipeline.id)))
             .source(gl_pipeline.source.into())
             // TODO: How/where to obtain this information in this direction?
