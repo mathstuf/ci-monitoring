@@ -20,7 +20,7 @@ use crate::DiscoverableLookup;
 ///
 /// Intended only for in-memory storage; no actual persistence is offered as removing data is
 /// infeasible due to having to rewrite all indices to account for holes.
-#[derive(Clone)]
+#[derive(Default, Clone)]
 pub struct VecLookup {
     deployments: Vec<Deployment<Self>>,
     environments: Vec<Environment<Self>>,
