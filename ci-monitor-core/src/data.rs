@@ -76,6 +76,8 @@ pub use runner::RunnerProtectionLevel;
 pub use runner::RunnerType;
 
 pub use runner_host::RunnerHost;
+pub use runner_host::RunnerHostBuilder;
+pub use runner_host::RunnerHostBuilderError;
 
 pub use user::User;
 pub use user::UserBuilder;
