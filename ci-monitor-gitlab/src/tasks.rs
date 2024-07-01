@@ -12,6 +12,7 @@ mod runner;
 mod user;
 
 pub use self::merge_request::discover_merge_requests;
+pub use self::merge_request::update_merge_request;
 
 pub use self::pipeline_schedule::discover_pipeline_schedules;
 pub use self::pipeline_schedule::update_pipeline_schedule;

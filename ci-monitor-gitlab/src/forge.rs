@@ -94,6 +94,10 @@ where
             ForgeTask::DiscoverMergeRequests {
                 project,
             } => tasks::discover_merge_requests(self, project).await,
+            ForgeTask::UpdateMergeRequest {
+                project,
+                merge_request,
+            } => tasks::update_merge_request(self, project, merge_request).await,
             _ => {
                 Err(ForgeError::Unknown {
                     task,
