@@ -43,6 +43,8 @@ pub use instance::InstanceBuilder;
 pub use instance::InstanceBuilderError;
 
 pub use job::Job;
+pub use job::JobBuilder;
+pub use job::JobBuilderError;
 pub use job::JobState;
 
 pub use job_artifact::ArtifactExpiration;
