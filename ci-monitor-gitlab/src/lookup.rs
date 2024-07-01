@@ -17,7 +17,7 @@ pub trait GitlabLookup<L>:
     + Lookup<Job<L>>
     + Lookup<JobArtifact<L>>
     + DiscoverableLookup<MergeRequest<L>>
-    + Lookup<Pipeline<L>>
+    + DiscoverableLookup<Pipeline<L>>
     + DiscoverableLookup<PipelineSchedule<L>>
     + DiscoverableLookup<Project<L>>
     + DiscoverableLookup<Runner<L>>

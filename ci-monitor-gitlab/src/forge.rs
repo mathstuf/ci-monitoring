@@ -101,6 +101,10 @@ where
             ForgeTask::DiscoverPipelines {
                 project,
             } => tasks::discover_pipelines(self, project).await,
+            ForgeTask::UpdatePipeline {
+                project,
+                pipeline,
+            } => tasks::update_pipeline(self, project, pipeline).await,
             _ => {
                 Err(ForgeError::Unknown {
                     task,
