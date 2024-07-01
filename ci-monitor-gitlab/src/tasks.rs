@@ -4,6 +4,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+mod job;
 mod merge_request;
 mod pipeline;
 mod pipeline_schedule;
@@ -11,6 +12,8 @@ mod pipeline_variables;
 mod project;
 mod runner;
 mod user;
+
+pub use self::job::discover_jobs;
 
 pub use self::merge_request::discover_merge_requests;
 pub use self::merge_request::update_merge_request;
