@@ -31,6 +31,8 @@ pub use deployment::Deployment;
 pub use deployment::DeploymentStatus;
 
 pub use environment::Environment;
+pub use environment::EnvironmentBuilder;
+pub use environment::EnvironmentBuilderError;
 pub use environment::EnvironmentState;
 pub use environment::EnvironmentTier;
 
