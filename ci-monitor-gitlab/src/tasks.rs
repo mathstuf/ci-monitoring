@@ -4,9 +4,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+mod pipeline_schedule;
 mod project;
 mod runner;
 mod user;
+
+pub use self::pipeline_schedule::discover_pipeline_schedules;
 
 pub use self::project::update_project;
 pub use self::project::update_project_by_name;

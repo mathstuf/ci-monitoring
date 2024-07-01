@@ -84,6 +84,9 @@ where
             ForgeTask::UpdateRunner {
                 id,
             } => tasks::update_runner(self, id).await,
+            ForgeTask::DiscoverPipelineSchedules {
+                project,
+            } => tasks::discover_pipeline_schedules(self, project).await,
             _ => {
                 Err(ForgeError::Unknown {
                     task,
