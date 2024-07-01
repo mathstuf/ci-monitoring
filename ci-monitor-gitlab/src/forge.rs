@@ -113,6 +113,10 @@ where
                 project,
                 pipeline,
             } => tasks::discover_jobs(self, project, pipeline).await,
+            ForgeTask::UpdateJob {
+                project,
+                job,
+            } => tasks::update_job(self, project, job).await,
             _ => {
                 Err(ForgeError::Unknown {
                     task,

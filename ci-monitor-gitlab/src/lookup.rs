@@ -14,7 +14,7 @@ use ci_monitor_persistence::{DiscoverableLookup, VecLookup};
 pub trait GitlabLookup<L>:
     Lookup<Deployment<L>>
     + Lookup<Environment<L>>
-    + Lookup<Job<L>>
+    + DiscoverableLookup<Job<L>>
     + Lookup<JobArtifact<L>>
     + DiscoverableLookup<MergeRequest<L>>
     + DiscoverableLookup<Pipeline<L>>

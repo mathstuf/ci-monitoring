@@ -14,6 +14,7 @@ mod runner;
 mod user;
 
 pub use self::job::discover_jobs;
+pub use self::job::update_job;
 
 pub use self::merge_request::discover_merge_requests;
 pub use self::merge_request::update_merge_request;
