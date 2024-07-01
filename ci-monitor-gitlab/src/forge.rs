@@ -91,6 +91,9 @@ where
                 project,
                 schedule,
             } => tasks::update_pipeline_schedule(self, project, schedule).await,
+            ForgeTask::DiscoverMergeRequests {
+                project,
+            } => tasks::discover_merge_requests(self, project).await,
             _ => {
                 Err(ForgeError::Unknown {
                     task,

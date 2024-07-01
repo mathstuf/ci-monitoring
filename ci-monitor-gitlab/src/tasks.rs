@@ -4,11 +4,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+mod merge_request;
 mod pipeline_schedule;
 mod pipeline_variables;
 mod project;
 mod runner;
 mod user;
+
+pub use self::merge_request::discover_merge_requests;
 
 pub use self::pipeline_schedule::discover_pipeline_schedules;
 pub use self::pipeline_schedule::update_pipeline_schedule;
