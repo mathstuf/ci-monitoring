@@ -98,6 +98,9 @@ where
                 project,
                 merge_request,
             } => tasks::update_merge_request(self, project, merge_request).await,
+            ForgeTask::DiscoverPipelines {
+                project,
+            } => tasks::discover_pipelines(self, project).await,
             _ => {
                 Err(ForgeError::Unknown {
                     task,
