@@ -215,7 +215,7 @@ struct GitlabPipelineDetails {
     #[serde(rename = "ref")]
     ref_: String,
     source: GitlabPipelineSource,
-    user: GitlabUser,
+    user: Option<GitlabUser>,
     status: GitlabPipelineStatus,
     coverage: Option<f64>,
     web_url: String,
@@ -255,14 +255,18 @@ where
     let mut add_task = |task| outcome.additional_tasks.push(task);
     let pipeline = gl_pipeline.id;
 
-    let user_idx = if let Some(idx) =
-        <L as DiscoverableLookup<User<L>>>::find(forge.storage().deref(), gl_pipeline.user.id)
-    {
-        Some(idx)
+    let user_idx = if let Some(user) = gl_pipeline.user {
+        if let Some(idx) =
+            <L as DiscoverableLookup<User<L>>>::find(forge.storage().deref(), user.id)
+        {
+            Some(idx)
+        } else {
+            add_task(ForgeTask::UpdateUser {
+                user: user.id,
+            });
+            None
+        }
     } else {
-        add_task(ForgeTask::UpdateUser {
-            user: gl_pipeline.user.id,
-        });
         None
     };
     let project_idx = if let Some(idx) =
@@ -276,16 +280,15 @@ where
         None
     };
 
-    let (user_idx, project_idx) =
-        if let Some((u, p)) = user_idx.and_then(|u| project_idx.map(|p| (u, p))) {
-            (u, p)
-        } else {
-            add_task(ForgeTask::UpdatePipeline {
-                project,
-                pipeline,
-            });
-            return Ok(outcome);
-        };
+    let project_idx = if let Some(p) = project_idx {
+        p
+    } else {
+        add_task(ForgeTask::UpdatePipeline {
+            project,
+            pipeline,
+        });
+        return Ok(outcome);
+    };
 
     add_task(ForgeTask::DiscoverJobs {
         project: gl_pipeline.project_id,
@@ -295,6 +298,9 @@ where
     let update = move |pipeline: &mut Pipeline<L>| {
         pipeline.status = gl_pipeline.status.into();
         pipeline.coverage = gl_pipeline.coverage;
+        if user_idx.is_some() {
+            pipeline.user = user_idx;
+        }
         // TODO: How to tell if the pipeline is archived or not?
         //pipeline.archived = gl_pipeline.archived;
         pipeline.started_at = gl_pipeline.started_at;
@@ -327,7 +333,6 @@ where
             //.schedule???
             //.parent_pipeline???
             //.merge_request???
-            .user(user_idx)
             .status(gl_pipeline.status.into())
             .url(gl_pipeline.web_url)
             .created_at(gl_pipeline.created_at)
