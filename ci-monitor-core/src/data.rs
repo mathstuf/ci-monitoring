@@ -68,6 +68,8 @@ pub use pipeline_schedule::PipelineScheduleBuilder;
 pub use pipeline_schedule::PipelineScheduleBuilderError;
 
 pub use pipeline_variables::PipelineVariable;
+pub use pipeline_variables::PipelineVariableBuilder;
+pub use pipeline_variables::PipelineVariableBuilderError;
 pub use pipeline_variables::PipelineVariableType;
 pub use pipeline_variables::PipelineVariables;
 
