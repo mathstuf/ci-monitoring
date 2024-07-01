@@ -15,6 +15,7 @@ mod user;
 pub use self::merge_request::discover_merge_requests;
 pub use self::merge_request::update_merge_request;
 
+pub use self::pipeline::discover_merge_request_pipelines;
 pub use self::pipeline::discover_pipelines;
 pub use self::pipeline::update_pipeline;
 

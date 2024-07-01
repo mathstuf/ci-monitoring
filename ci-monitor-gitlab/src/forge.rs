@@ -101,6 +101,10 @@ where
             ForgeTask::DiscoverPipelines {
                 project,
             } => tasks::discover_pipelines(self, project).await,
+            ForgeTask::DiscoverMergeRequestPipelines {
+                project,
+                merge_request,
+            } => tasks::discover_merge_request_pipelines(self, project, merge_request).await,
             ForgeTask::UpdatePipeline {
                 project,
                 pipeline,
