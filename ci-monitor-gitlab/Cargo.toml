@@ -1,0 +1,20 @@
+[package]
+name = "ci-monitor-gitlab"
+version = "0.1.0"
+readme = "README.md"
+keywords = ["gitlab", "ci", "monitoring"]
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+
+[dependencies]
+chrono = { version = "~0.4", default-features = false }
+ci-monitor-core = { version = "0.1.0", path = "../ci-monitor-core" }
+ci-monitor-forge = { version = "0.1.0", path = "../ci-monitor-forge" }
+ci-monitor-persistence = { version = "0.1.0", path = "../ci-monitor-persistence" }
+futures-util = { version = "0.3.30", default-features = false }
+gitlab = { version = "0.1700.1", default-features = false, features = ["client_api"] }
+serde = { version = "^1.0", default-features = false, features = ["derive"] }
+
+async-trait = "~0.1.9"
