@@ -28,6 +28,8 @@ pub use blob::BlobReference;
 pub use blob::ContentHash;
 
 pub use deployment::Deployment;
+pub use deployment::DeploymentBuilder;
+pub use deployment::DeploymentBuilderError;
 pub use deployment::DeploymentStatus;
 
 pub use environment::Environment;
