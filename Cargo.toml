@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "ci-monitor",
     "ci-monitor-core",
     "ci-monitor-forge",
     "ci-monitor-gitlab",
