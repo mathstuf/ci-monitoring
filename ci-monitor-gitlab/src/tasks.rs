@@ -11,6 +11,7 @@ mod runner;
 mod user;
 
 pub use self::pipeline_schedule::discover_pipeline_schedules;
+pub use self::pipeline_schedule::update_pipeline_schedule;
 
 use self::pipeline_variables::gitlab_variables;
 use self::pipeline_variables::GitlabPipelineVariable;

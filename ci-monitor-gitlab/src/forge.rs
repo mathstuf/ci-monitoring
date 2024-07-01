@@ -87,6 +87,10 @@ where
             ForgeTask::DiscoverPipelineSchedules {
                 project,
             } => tasks::discover_pipeline_schedules(self, project).await,
+            ForgeTask::UpdatePipelineSchedule {
+                project,
+                schedule,
+            } => tasks::update_pipeline_schedule(self, project, schedule).await,
             _ => {
                 Err(ForgeError::Unknown {
                     task,
