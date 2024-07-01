@@ -12,6 +12,7 @@ mod user;
 
 pub use self::pipeline_schedule::discover_pipeline_schedules;
 
+use self::pipeline_variables::gitlab_variables;
 use self::pipeline_variables::GitlabPipelineVariable;
 
 pub use self::project::update_project;
