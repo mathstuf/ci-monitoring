@@ -80,6 +80,7 @@ where
             ForgeTask::UpdateUser {
                 user,
             } => tasks::update_user(self, user).await,
+            ForgeTask::DiscoverRunners => tasks::discover_runners(self).await,
             _ => {
                 Err(ForgeError::Unknown {
                     task,

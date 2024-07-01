@@ -5,10 +5,13 @@
 // except according to those terms.
 
 mod project;
+mod runner;
 mod user;
 
 pub use self::project::update_project;
 pub use self::project::update_project_by_name;
+
+pub use self::runner::discover_runners;
 
 pub use self::user::update_user;
 pub use self::user::update_user_by_name;
