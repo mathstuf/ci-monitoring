@@ -5,11 +5,14 @@
 // except according to those terms.
 
 mod pipeline_schedule;
+mod pipeline_variables;
 mod project;
 mod runner;
 mod user;
 
 pub use self::pipeline_schedule::discover_pipeline_schedules;
+
+use self::pipeline_variables::GitlabPipelineVariable;
 
 pub use self::project::update_project;
 pub use self::project::update_project_by_name;
