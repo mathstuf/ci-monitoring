@@ -81,6 +81,9 @@ where
                 user,
             } => tasks::update_user(self, user).await,
             ForgeTask::DiscoverRunners => tasks::discover_runners(self).await,
+            ForgeTask::UpdateRunner {
+                id,
+            } => tasks::update_runner(self, id).await,
             _ => {
                 Err(ForgeError::Unknown {
                     task,

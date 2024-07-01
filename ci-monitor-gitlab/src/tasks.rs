@@ -12,6 +12,7 @@ pub use self::project::update_project;
 pub use self::project::update_project_by_name;
 
 pub use self::runner::discover_runners;
+pub use self::runner::update_runner;
 
 pub use self::user::update_user;
 pub use self::user::update_user_by_name;

@@ -20,8 +20,8 @@ pub trait GitlabLookup<L>:
     + Lookup<Pipeline<L>>
     + Lookup<PipelineSchedule<L>>
     + DiscoverableLookup<Project<L>>
-    + Lookup<Runner<L>>
-    + Lookup<RunnerHost>
+    + DiscoverableLookup<Runner<L>>
+    + DiscoverableLookup<RunnerHost>
     + DiscoverableLookup<User<L>>
     + DiscoverableLookup<Instance>
 where
