@@ -21,7 +21,6 @@ pub struct GitlabForge<L>
 where
     L: Lookup<Instance>,
 {
-    url: String,
     gitlab: AsyncGitlab,
     storage: RwLock<L>,
     instance_idx: <L as Lookup<Instance>>::Index,
@@ -62,6 +61,7 @@ where
 
     fn new_impl(url: String, gitlab: AsyncGitlab, mut storage: L) -> Self {
         let all_instance_idx = storage.all_indices();
+        let new_unique_id = all_instance_idx.len() as u64;
         let instance_idx = all_instance_idx
             .into_iter()
             .filter_map(|idx| {
@@ -80,7 +80,8 @@ where
             .unwrap_or_else(|| {
                 let instance = Instance::builder()
                     .forge("gitlab")
-                    .url(url.clone())
+                    .url(url)
+                    .unique_id(new_unique_id)
                     .build()
                     .unwrap();
 
@@ -88,7 +89,6 @@ where
             });
 
         Self {
-            url,
             gitlab,
             storage: RwLock::new(storage),
             instance_idx,
@@ -101,11 +101,12 @@ where
     L: Lookup<Instance>,
 {
     fn instance(&self) -> Instance {
-        Instance::builder()
-            .forge("gitlab")
-            .url(self.url.clone())
-            .build()
+        self.storage
+            .read()
             .unwrap()
+            .lookup(&self.instance_idx)
+            .unwrap()
+            .clone()
     }
 }
 
