@@ -10,6 +10,7 @@ use async_trait::async_trait;
 use ci_monitor_core::data::Instance;
 use ci_monitor_core::Lookup;
 use ci_monitor_forge::{Forge, ForgeCore, ForgeError, ForgeTask, ForgeTaskOutcome};
+use ci_monitor_persistence::DiscoverableLookup;
 use gitlab::AsyncGitlab;
 
 use crate::tasks;
@@ -44,6 +45,54 @@ where
 
     pub(crate) fn instance_index(&self) -> <L as Lookup<Instance>>::Index {
         self.instance_idx.clone()
+    }
+}
+
+impl<L> GitlabForge<L>
+where
+    L: DiscoverableLookup<Instance>,
+{
+    /// Create a new `GitlabForge` from a GitLab client and storage.
+    pub fn new<U>(url: U, gitlab: AsyncGitlab, storage: L) -> Self
+    where
+        U: Into<String>,
+    {
+        Self::new_impl(url.into(), gitlab, storage)
+    }
+
+    fn new_impl(url: String, gitlab: AsyncGitlab, mut storage: L) -> Self {
+        let all_instance_idx = storage.all_indices();
+        let instance_idx = all_instance_idx
+            .into_iter()
+            .filter_map(|idx| {
+                let inst = storage.lookup(&idx);
+                if let Some(inst) = inst {
+                    if inst.url == url && inst.forge == "gitlab" {
+                        Some(idx)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .next()
+            .unwrap_or_else(|| {
+                let instance = Instance::builder()
+                    .forge("gitlab")
+                    .url(url.clone())
+                    .build()
+                    .unwrap();
+
+                storage.store(instance)
+            });
+
+        Self {
+            url,
+            gitlab,
+            storage: RwLock::new(storage),
+            instance_idx,
+        }
     }
 }
 
