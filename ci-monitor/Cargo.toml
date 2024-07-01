@@ -10,3 +10,6 @@ edition.workspace = true
 
 [dependencies]
 clap = { version = "4", features = ["cargo"] }
+ci-monitor-gitlab = { version = "0.1", path = "../ci-monitor-gitlab" }
+ci-monitor-persistence = { version = "0.1", path = "../ci-monitor-persistence" }
+tokio = { version = "1", default-features = false, features = ["macros", "rt", "rt-multi-thread"] }
