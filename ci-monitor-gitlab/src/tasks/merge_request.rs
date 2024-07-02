@@ -104,7 +104,7 @@ struct GitlabMergeRequestDetails {
 
     state: GitlabMergeState,
 
-    source_project_id: u64,
+    source_project_id: Option<u64>,
     source_branch: String,
     sha: String,
     target_project_id: u64,
@@ -162,20 +162,23 @@ where
         });
         None
     };
-    let source_project_idx =
-        if gl_merge_request.source_project_id == gl_merge_request.target_project_id {
+    let source_project_idx = if let Some(source_project_id) = gl_merge_request.source_project_id {
+        if source_project_id == gl_merge_request.target_project_id {
             target_project_idx.clone()
-        } else if let Some(idx) = <L as DiscoverableLookup<Project<L>>>::find(
-            forge.storage().deref(),
-            gl_merge_request.source_project_id,
-        ) {
+        } else if let Some(idx) =
+            <L as DiscoverableLookup<Project<L>>>::find(forge.storage().deref(), source_project_id)
+        {
             Some(idx)
         } else {
             add_task(ForgeTask::UpdateProject {
-                project: gl_merge_request.source_project_id,
+                project: source_project_id,
             });
             None
-        };
+        }
+    } else {
+        // Just act as if the MR came from the target project itself.
+        target_project_idx.clone()
+    };
 
     let (author_idx, target_project_idx, source_project_idx) = if let Some((a, t, s)) = author_idx
         .and_then(|a| target_project_idx.and_then(|t| source_project_idx.map(|s| (a, t, s))))
