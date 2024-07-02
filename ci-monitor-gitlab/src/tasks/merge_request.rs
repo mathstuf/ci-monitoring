@@ -192,11 +192,6 @@ where
         return Ok(outcome);
     };
 
-    add_task(ForgeTask::DiscoverMergeRequestPipelines {
-        project,
-        merge_request: gl_merge_request.iid,
-    });
-
     let update = move |merge_request: &mut MergeRequest<L>| {
         merge_request.source_branch = gl_merge_request.source_branch;
         merge_request.sha = gl_merge_request.sha.unwrap_or_default();
@@ -209,6 +204,7 @@ where
     };
 
     // Create a merge request entry.
+    let mut discover_pipelines = false;
     let merge_request = if let Some(idx) =
         <L as DiscoverableLookup<MergeRequest<L>>>::find(forge.storage().deref(), merge_request)
     {
@@ -216,12 +212,16 @@ where
             <L as Lookup<MergeRequest<L>>>::lookup(forge.storage().deref(), &idx)
         {
             let mut updated = existing.clone();
+            if updated.state == MergeRequestStatus::Open {
+                discover_pipelines = true;
+            }
             update(&mut updated);
             updated
         } else {
             return Err(ForgeError::lookup::<L, MergeRequest<L>>(&idx));
         }
     } else {
+        discover_pipelines = true;
         let mut merge_request = MergeRequest::builder()
             .id(gl_merge_request.iid)
             .source_project(source_project_idx)
@@ -236,6 +236,13 @@ where
         update(&mut merge_request);
         merge_request
     };
+
+    if discover_pipelines {
+        add_task(ForgeTask::DiscoverMergeRequestPipelines {
+            project,
+            merge_request: gl_merge_request.iid,
+        });
+    }
 
     // Store the merge request in the storage.
     forge.storage_mut().store(merge_request);
