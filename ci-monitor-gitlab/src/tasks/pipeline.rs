@@ -225,6 +225,19 @@ struct GitlabPipelineDetails {
     finished_at: Option<DateTime<Utc>>,
 }
 
+fn is_active(status: PipelineStatus) -> bool {
+    !matches!(
+        status,
+        PipelineStatus::Success
+            | PipelineStatus::Failed
+            | PipelineStatus::Canceled
+            | PipelineStatus::Skipped
+            | PipelineStatus::Completed
+            | PipelineStatus::Neutral
+            | PipelineStatus::Stale,
+    )
+}
+
 pub async fn update_pipeline<L>(
     forge: &GitlabForge<L>,
     project: u64,
@@ -290,11 +303,6 @@ where
         return Ok(outcome);
     };
 
-    add_task(ForgeTask::DiscoverJobs {
-        project: gl_pipeline.project_id,
-        pipeline: gl_pipeline.id,
-    });
-
     let update = move |pipeline: &mut Pipeline<L>| {
         pipeline.status = gl_pipeline.status.into();
         pipeline.coverage = gl_pipeline.coverage.and_then(|c| c.parse().ok());
@@ -310,11 +318,15 @@ where
     };
 
     // Create a pipeline entry.
+    let mut schedule_job_update = false;
     let pipeline = if let Some(idx) =
         <L as DiscoverableLookup<Pipeline<L>>>::find(forge.storage().deref(), pipeline)
     {
         if let Some(existing) = <L as Lookup<Pipeline<L>>>::lookup(forge.storage().deref(), &idx) {
             let mut updated = existing.clone();
+            if is_active(updated.status) || updated.status != gl_pipeline.status.into() {
+                schedule_job_update = true;
+            }
             update(&mut updated);
             updated
         } else {
@@ -340,10 +352,18 @@ where
             .name(gl_pipeline.name)
             .build()
             .unwrap();
+        schedule_job_update = true;
 
         update(&mut pipeline);
         pipeline
     };
+
+    if schedule_job_update {
+        add_task(ForgeTask::DiscoverJobs {
+            project: gl_pipeline.project_id,
+            pipeline: gl_pipeline.id,
+        });
+    }
 
     // Store the pipeline in the storage.
     forge.storage_mut().store(pipeline);
