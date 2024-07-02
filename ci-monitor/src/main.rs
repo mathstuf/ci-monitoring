@@ -4,14 +4,56 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::VecDeque;
 use std::error::Error;
+use std::sync::Arc;
 
 use ci_monitor_forge::{Forge, ForgeTask};
 use ci_monitor_gitlab::gitlab;
 use ci_monitor_gitlab::GitlabForge;
 use ci_monitor_persistence::VecLookup;
 use clap::{Arg, ArgAction, Command};
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+
+async fn handle_tasks(
+    forge: Arc<GitlabForge<VecLookup>>,
+    send: UnboundedSender<ForgeTask>,
+    mut recv: UnboundedReceiver<ForgeTask>,
+) {
+    let mut tokio_tasks = Vec::new();
+    let mut count = 0;
+
+    while let Some(task) = recv.recv().await {
+        println!(
+            "performing task {} ({} remaining): {:?}",
+            count,
+            recv.len(),
+            task,
+        );
+        count += 1;
+
+        let inner_forge = forge.clone();
+        let inner_send = send.clone();
+        let async_task = tokio::spawn(async move {
+            let res = inner_forge.run_task_async(task).await;
+            match res {
+                Ok(outcome) => {
+                    for task in outcome.additional_tasks {
+                        inner_send.send(task).unwrap();
+                    }
+                },
+                Err(err) => {
+                    println!("failed: {:?}", err);
+                },
+            }
+        });
+
+        tokio_tasks.push(async_task);
+    }
+
+    for tokio_task in tokio_tasks {
+        tokio_task.await.unwrap();
+    }
+}
 
 /// A `main` function which supports `try!`.
 async fn try_main() -> Result<(), Box<dyn Error>> {
@@ -35,32 +77,16 @@ async fn try_main() -> Result<(), Box<dyn Error>> {
         .unwrap();
     let storage = VecLookup::default();
     let forge = GitlabForge::new("gitlab.kitware.com", gitlab, storage);
+    let forge = Arc::new(forge);
 
-    let mut tasks: VecDeque<ForgeTask> = VecDeque::new();
-    tasks.push_back(ForgeTask::DiscoverRunners {});
-    tasks.push_back(ForgeTask::UpdateProject {
+    let (send, recv) = tokio::sync::mpsc::unbounded_channel();
+    send.send(ForgeTask::DiscoverRunners {}).unwrap();
+    send.send(ForgeTask::UpdateProject {
         project: 13,
-    });
+    })
+    .unwrap();
 
-    let mut count = 0;
-    while let Some(task) = tasks.pop_front() {
-        println!(
-            "performing task {} ({} remaining): {:?}",
-            count,
-            tasks.len(),
-            task,
-        );
-        count += 1;
-        let res = forge.run_task_async(task).await;
-        match res {
-            Ok(outcome) => {
-                tasks.extend(outcome.additional_tasks);
-            },
-            Err(err) => {
-                println!("failed: {:?}", err);
-            },
-        }
-    }
+    handle_tasks(forge, send, recv).await;
 
     Ok(())
 }
