@@ -187,7 +187,7 @@ where
     } else {
         add_task(ForgeTask::UpdateMergeRequest {
             project,
-            merge_request,
+            merge_request: gl_merge_request.iid,
         });
         return Ok(outcome);
     };
