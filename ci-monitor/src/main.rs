@@ -42,8 +42,15 @@ async fn try_main() -> Result<(), Box<dyn Error>> {
         project: 13,
     });
 
+    let mut count = 0;
     while let Some(task) = tasks.pop_front() {
-        println!("performing task: {:?}", task);
+        println!(
+            "performing task {} ({} remaining): {:?}",
+            count,
+            tasks.len(),
+            task,
+        );
+        count += 1;
         let res = forge.run_task_async(task).await;
         match res {
             Ok(outcome) => {
