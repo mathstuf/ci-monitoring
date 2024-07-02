@@ -100,7 +100,7 @@ struct GitlabMergeRequestDetails {
     web_url: String,
 
     title: String,
-    description: String,
+    description: Option<String>,
 
     state: GitlabMergeState,
 
@@ -202,7 +202,7 @@ where
         merge_request.sha = gl_merge_request.sha.unwrap_or_default();
         merge_request.target_branch = gl_merge_request.target_branch;
         merge_request.title = gl_merge_request.title;
-        merge_request.description = gl_merge_request.description;
+        merge_request.description = gl_merge_request.description.unwrap_or_default();
         merge_request.state = gl_merge_request.state.into();
 
         merge_request.cim_refreshed_at = Utc::now();
