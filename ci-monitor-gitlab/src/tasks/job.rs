@@ -119,6 +119,22 @@ struct GitlabRunner {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum GitlabCoverage {
+    Float(f64),
+    String(String),
+}
+
+impl GitlabCoverage {
+    fn as_f64(&self) -> Option<f64> {
+        match self {
+            Self::Float(f) => Some(*f),
+            Self::String(s) => s.parse().ok(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
 struct GitlabJobDetails {
     id: u64,
     user: GitlabUser,
@@ -138,7 +154,7 @@ struct GitlabJobDetails {
     erased_at: Option<DateTime<Utc>>,
     queued_duration: Option<f64>,
     archived: bool,
-    coverage: Option<f64>,
+    coverage: Option<GitlabCoverage>,
 }
 
 pub async fn update_job<L>(
@@ -230,7 +246,7 @@ where
         job.erased_at = gl_job.erased_at;
         job.queued_duration = gl_job.queued_duration;
         job.archived = gl_job.archived;
-        job.coverage = gl_job.coverage;
+        job.coverage = gl_job.coverage.and_then(|c| c.as_f64());
 
         job.cim_refreshed_at = Utc::now();
     };

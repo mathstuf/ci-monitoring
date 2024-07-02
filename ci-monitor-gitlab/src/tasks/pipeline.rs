@@ -217,7 +217,7 @@ struct GitlabPipelineDetails {
     source: GitlabPipelineSource,
     user: Option<GitlabUser>,
     status: GitlabPipelineStatus,
-    coverage: Option<f64>,
+    coverage: Option<String>,
     web_url: String,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
@@ -297,7 +297,7 @@ where
 
     let update = move |pipeline: &mut Pipeline<L>| {
         pipeline.status = gl_pipeline.status.into();
-        pipeline.coverage = gl_pipeline.coverage;
+        pipeline.coverage = gl_pipeline.coverage.and_then(|c| c.parse().ok());
         if user_idx.is_some() {
             pipeline.user = user_idx;
         }
