@@ -14,6 +14,8 @@ use ci_monitor_persistence::VecLookup;
 use clap::{Arg, ArgAction, Command};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
+const QUEUE_SIZE: usize = 50;
+
 async fn handle_tasks(
     forge: Arc<GitlabForge<VecLookup>>,
     send: UnboundedSender<ForgeTask>,
@@ -48,6 +50,12 @@ async fn handle_tasks(
         });
 
         tokio_tasks.push(async_task);
+
+        if tokio_tasks.len() > QUEUE_SIZE {
+            for tokio_task in tokio_tasks.drain(..QUEUE_SIZE) {
+                tokio_task.await.unwrap();
+            }
+        }
     }
 
     for tokio_task in tokio_tasks {
