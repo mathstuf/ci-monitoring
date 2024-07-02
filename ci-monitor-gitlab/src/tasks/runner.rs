@@ -111,7 +111,7 @@ struct GitlabRunnerDetails {
 
     paused: bool,
     is_shared: bool,
-    online: bool,
+    online: Option<bool>,
     locked: bool,
 
     maximum_timeout: Option<u64>,
@@ -159,7 +159,7 @@ where
         //runner.projects = gl_runner.projects;
         runner.paused = gl_runner.paused;
         runner.shared = gl_runner.is_shared;
-        runner.online = gl_runner.online;
+        runner.online = gl_runner.online.unwrap_or(false);
         runner.locked = gl_runner.locked;
         runner.contacted_at = gl_runner.contacted_at;
         runner.maintenance_note = gl_runner.maintenance_note;
