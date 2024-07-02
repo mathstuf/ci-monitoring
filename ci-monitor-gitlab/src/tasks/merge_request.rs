@@ -106,7 +106,7 @@ struct GitlabMergeRequestDetails {
 
     source_project_id: Option<u64>,
     source_branch: String,
-    sha: String,
+    sha: Option<String>,
     target_project_id: u64,
     target_branch: String,
 }
@@ -199,7 +199,7 @@ where
 
     let update = move |merge_request: &mut MergeRequest<L>| {
         merge_request.source_branch = gl_merge_request.source_branch;
-        merge_request.sha = gl_merge_request.sha;
+        merge_request.sha = gl_merge_request.sha.unwrap_or_default();
         merge_request.target_branch = gl_merge_request.target_branch;
         merge_request.title = gl_merge_request.title;
         merge_request.description = gl_merge_request.description;
