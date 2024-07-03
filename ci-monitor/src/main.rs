@@ -5,6 +5,7 @@
 // except according to those terms.
 
 use std::error::Error;
+use std::mem;
 use std::num::NonZeroU32;
 use std::sync::Arc;
 use std::time::Duration;
@@ -16,8 +17,6 @@ use ci_monitor_persistence::VecLookup;
 use clap::{Arg, ArgAction, Command};
 use governor::{Jitter, Quota, RateLimiter};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
-
-const QUEUE_SIZE: usize = 50;
 
 async fn handle_tasks(
     forge: Arc<GitlabForge<VecLookup>>,
@@ -58,10 +57,17 @@ async fn handle_tasks(
 
         tokio_tasks.push(async_task);
 
-        if tokio_tasks.len() > QUEUE_SIZE {
-            for tokio_task in tokio_tasks.drain(..QUEUE_SIZE) {
-                tokio_task.await.unwrap();
-            }
+        let complete: Vec<_> = {
+            let task_inspection = mem::take(&mut tokio_tasks);
+            let (mut incomplete, complete) = task_inspection
+                .into_iter()
+                .partition(|task| task.is_finished());
+            mem::swap(&mut tokio_tasks, &mut incomplete);
+            complete
+        };
+
+        for tokio_task in complete {
+            tokio_task.await.unwrap();
         }
     }
 
