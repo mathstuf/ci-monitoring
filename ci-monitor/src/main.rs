@@ -5,13 +5,16 @@
 // except according to those terms.
 
 use std::error::Error;
+use std::num::NonZeroU32;
 use std::sync::Arc;
+use std::time::Duration;
 
 use ci_monitor_forge::{Forge, ForgeTask};
 use ci_monitor_gitlab::gitlab;
 use ci_monitor_gitlab::GitlabForge;
 use ci_monitor_persistence::VecLookup;
 use clap::{Arg, ArgAction, Command};
+use governor::{Jitter, Quota, RateLimiter};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 const QUEUE_SIZE: usize = 50;
@@ -23,8 +26,12 @@ async fn handle_tasks(
 ) {
     let mut tokio_tasks = Vec::new();
     let mut count = 0;
+    let governor = RateLimiter::direct(Quota::per_second(NonZeroU32::new(50).unwrap()));
+    let jitter = Jitter::up_to(Duration::from_secs(2));
 
     while let Some(task) = recv.recv().await {
+        governor.until_ready_with_jitter(jitter).await;
+
         println!(
             "performing task {} ({} remaining): {:?}",
             count,
