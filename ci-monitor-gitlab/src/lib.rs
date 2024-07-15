@@ -18,3 +18,5 @@ mod tasks;
 pub use forge::GitlabForge;
 
 use lookup::GitlabLookup;
+
+pub use gitlab;

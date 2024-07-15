@@ -144,10 +144,11 @@ where
             return Ok(outcome);
         };
     let user_idx_inner = user_idx.clone();
+    let ref_inner = gl_pipeline_schedule.ref_.clone();
 
     let update = move |pipeline_schedule: &mut PipelineSchedule<L>| {
         pipeline_schedule.name = gl_pipeline_schedule.description;
-        pipeline_schedule.ref_ = gl_pipeline_schedule.ref_;
+        pipeline_schedule.ref_ = ref_inner;
         pipeline_schedule.updated_at = gl_pipeline_schedule.updated_at;
         pipeline_schedule.active = gl_pipeline_schedule.active;
         pipeline_schedule.next_run = gl_pipeline_schedule.next_run_at;
@@ -175,6 +176,7 @@ where
         let mut pipeline_schedule = PipelineSchedule::builder()
             .forge_id(pipeline_schedule)
             .project(project_idx)
+            .ref_(gl_pipeline_schedule.ref_)
             .created_at(gl_pipeline_schedule.created_at)
             .updated_at(gl_pipeline_schedule.updated_at)
             .owner(user_idx)

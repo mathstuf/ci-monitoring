@@ -94,7 +94,7 @@ mod tests {
 
     use crate::data::{
         Deployment, DeploymentBuilderError, DeploymentStatus, Environment, EnvironmentState,
-        EnvironmentTier, Instance, Pipeline, PipelineSource, PipelineStatus, Project, User,
+        EnvironmentTier, Instance, Pipeline, PipelineSource, PipelineStatus, Project,
     };
     use crate::Lookup;
 
@@ -116,23 +116,13 @@ mod tests {
             .unwrap()
     }
 
-    fn user(instance: <TestLookup as Lookup<Instance>>::Index) -> User<TestLookup> {
-        User::builder()
-            .forge_id(0)
-            .instance(instance)
-            .build()
-            .unwrap()
-    }
-
     fn pipeline(
         project: <TestLookup as Lookup<Project<TestLookup>>>::Index,
-        user: <TestLookup as Lookup<User<TestLookup>>>::Index,
     ) -> Pipeline<TestLookup> {
         Pipeline::builder()
             .project(project)
             .sha("0000000000000000000000000000000000000000")
             .source(PipelineSource::Schedule)
-            .user(user)
             .status(PipelineStatus::Created)
             .forge_id(0)
             .url("url")
@@ -180,10 +170,8 @@ mod tests {
     fn environment_is_required() {
         let mut lookup = TestLookup::default();
         let proj = project(&mut lookup);
-        let user = user(proj.instance.clone());
-        let user_idx = lookup.store(user);
         let proj_idx = lookup.store(proj);
-        let pipeline = pipeline(proj_idx.clone(), user_idx);
+        let pipeline = pipeline(proj_idx.clone());
         let pipeline_idx = lookup.store(pipeline);
 
         let err = Deployment::<TestLookup>::builder()
@@ -201,10 +189,8 @@ mod tests {
     fn forge_id_is_required() {
         let mut lookup = TestLookup::default();
         let proj = project(&mut lookup);
-        let user = user(proj.instance.clone());
-        let user_idx = lookup.store(user);
         let proj_idx = lookup.store(proj);
-        let pipeline = pipeline(proj_idx.clone(), user_idx);
+        let pipeline = pipeline(proj_idx.clone());
         let environment = environment(proj_idx);
         let pipeline_idx = lookup.store(pipeline);
         let environment_idx = lookup.store(environment);
@@ -224,10 +210,8 @@ mod tests {
     fn created_at_is_required() {
         let mut lookup = TestLookup::default();
         let proj = project(&mut lookup);
-        let user = user(proj.instance.clone());
-        let user_idx = lookup.store(user);
         let proj_idx = lookup.store(proj);
-        let pipeline = pipeline(proj_idx.clone(), user_idx);
+        let pipeline = pipeline(proj_idx.clone());
         let environment = environment(proj_idx);
         let pipeline_idx = lookup.store(pipeline);
         let environment_idx = lookup.store(environment);
@@ -247,10 +231,8 @@ mod tests {
     fn updated_at_is_required() {
         let mut lookup = TestLookup::default();
         let proj = project(&mut lookup);
-        let user = user(proj.instance.clone());
-        let user_idx = lookup.store(user);
         let proj_idx = lookup.store(proj);
-        let pipeline = pipeline(proj_idx.clone(), user_idx);
+        let pipeline = pipeline(proj_idx.clone());
         let environment = environment(proj_idx);
         let pipeline_idx = lookup.store(pipeline);
         let environment_idx = lookup.store(environment);
@@ -270,10 +252,8 @@ mod tests {
     fn status_is_required() {
         let mut lookup = TestLookup::default();
         let proj = project(&mut lookup);
-        let user = user(proj.instance.clone());
-        let user_idx = lookup.store(user);
         let proj_idx = lookup.store(proj);
-        let pipeline = pipeline(proj_idx.clone(), user_idx);
+        let pipeline = pipeline(proj_idx.clone());
         let environment = environment(proj_idx);
         let pipeline_idx = lookup.store(pipeline);
         let environment_idx = lookup.store(environment);
@@ -293,10 +273,8 @@ mod tests {
     fn sufficient_fields() {
         let mut lookup = TestLookup::default();
         let proj = project(&mut lookup);
-        let user = user(proj.instance.clone());
-        let user_idx = lookup.store(user);
         let proj_idx = lookup.store(proj);
-        let pipeline = pipeline(proj_idx.clone(), user_idx);
+        let pipeline = pipeline(proj_idx.clone());
         let environment = environment(proj_idx);
         let pipeline_idx = lookup.store(pipeline);
         let environment_idx = lookup.store(environment);

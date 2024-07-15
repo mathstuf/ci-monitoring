@@ -136,7 +136,8 @@ where
     #[builder(default)]
     pub variables: PipelineVariables,
     /// The user that created the pipeline.
-    pub user: <L as Lookup<User<L>>>::Index,
+    #[builder(default)]
+    pub user: Option<<L as Lookup<User<L>>>::Index>,
 
     // Pipeline results.
     /// The status of the pipeline.
@@ -196,7 +197,7 @@ mod tests {
     use chrono::Utc;
 
     use crate::data::{
-        Instance, Pipeline, PipelineBuilderError, PipelineSource, PipelineStatus, Project, User,
+        Instance, Pipeline, PipelineBuilderError, PipelineSource, PipelineStatus, Project,
     };
     use crate::Lookup;
 
@@ -218,25 +219,11 @@ mod tests {
             .unwrap()
     }
 
-    fn user(instance: <TestLookup as Lookup<Instance>>::Index) -> User<TestLookup> {
-        User::builder()
-            .forge_id(0)
-            .instance(instance)
-            .build()
-            .unwrap()
-    }
-
     #[test]
     fn project_is_required() {
-        let mut lookup = TestLookup::default();
-        let proj = project(&mut lookup);
-        let user = user(proj.instance.clone());
-        let user_idx = lookup.store(user);
-
         let err = Pipeline::<TestLookup>::builder()
             .sha("0000000000000000000000000000000000000000")
             .source(PipelineSource::Schedule)
-            .user(user_idx)
             .status(PipelineStatus::Created)
             .forge_id(0)
             .url("url")
@@ -251,14 +238,11 @@ mod tests {
     fn sha_is_required() {
         let mut lookup = TestLookup::default();
         let proj = project(&mut lookup);
-        let user = user(proj.instance.clone());
         let proj_idx = lookup.store(proj);
-        let user_idx = lookup.store(user);
 
         let err = Pipeline::<TestLookup>::builder()
             .project(proj_idx)
             .source(PipelineSource::Schedule)
-            .user(user_idx)
             .status(PipelineStatus::Created)
             .forge_id(0)
             .url("url")
@@ -273,14 +257,11 @@ mod tests {
     fn source_is_required() {
         let mut lookup = TestLookup::default();
         let proj = project(&mut lookup);
-        let user = user(proj.instance.clone());
         let proj_idx = lookup.store(proj);
-        let user_idx = lookup.store(user);
 
         let err = Pipeline::<TestLookup>::builder()
             .project(proj_idx)
             .sha("0000000000000000000000000000000000000000")
-            .user(user_idx)
             .status(PipelineStatus::Created)
             .forge_id(0)
             .url("url")
@@ -292,38 +273,15 @@ mod tests {
     }
 
     #[test]
-    fn user_is_required() {
-        let mut lookup = TestLookup::default();
-        let proj = project(&mut lookup);
-        let proj_idx = lookup.store(proj);
-
-        let err = Pipeline::<TestLookup>::builder()
-            .project(proj_idx)
-            .sha("0000000000000000000000000000000000000000")
-            .source(PipelineSource::Schedule)
-            .status(PipelineStatus::Created)
-            .forge_id(0)
-            .url("url")
-            .created_at(Utc::now())
-            .updated_at(Utc::now())
-            .build()
-            .unwrap_err();
-        crate::test::assert_missing_field!(err, PipelineBuilderError, "user");
-    }
-
-    #[test]
     fn status_is_required() {
         let mut lookup = TestLookup::default();
         let proj = project(&mut lookup);
-        let user = user(proj.instance.clone());
         let proj_idx = lookup.store(proj);
-        let user_idx = lookup.store(user);
 
         let err = Pipeline::<TestLookup>::builder()
             .project(proj_idx)
             .sha("0000000000000000000000000000000000000000")
             .source(PipelineSource::Schedule)
-            .user(user_idx)
             .forge_id(0)
             .url("url")
             .created_at(Utc::now())
@@ -337,15 +295,12 @@ mod tests {
     fn forge_id_is_required() {
         let mut lookup = TestLookup::default();
         let proj = project(&mut lookup);
-        let user = user(proj.instance.clone());
         let proj_idx = lookup.store(proj);
-        let user_idx = lookup.store(user);
 
         let err = Pipeline::<TestLookup>::builder()
             .project(proj_idx)
             .sha("0000000000000000000000000000000000000000")
             .source(PipelineSource::Schedule)
-            .user(user_idx)
             .status(PipelineStatus::Created)
             .url("url")
             .created_at(Utc::now())
@@ -359,15 +314,12 @@ mod tests {
     fn url_is_required() {
         let mut lookup = TestLookup::default();
         let proj = project(&mut lookup);
-        let user = user(proj.instance.clone());
         let proj_idx = lookup.store(proj);
-        let user_idx = lookup.store(user);
 
         let err = Pipeline::<TestLookup>::builder()
             .project(proj_idx)
             .sha("0000000000000000000000000000000000000000")
             .source(PipelineSource::Schedule)
-            .user(user_idx)
             .status(PipelineStatus::Created)
             .forge_id(0)
             .created_at(Utc::now())
@@ -381,15 +333,12 @@ mod tests {
     fn created_at_is_required() {
         let mut lookup = TestLookup::default();
         let proj = project(&mut lookup);
-        let user = user(proj.instance.clone());
         let proj_idx = lookup.store(proj);
-        let user_idx = lookup.store(user);
 
         let err = Pipeline::<TestLookup>::builder()
             .project(proj_idx)
             .sha("0000000000000000000000000000000000000000")
             .source(PipelineSource::Schedule)
-            .user(user_idx)
             .status(PipelineStatus::Created)
             .forge_id(0)
             .url("url")
@@ -403,15 +352,12 @@ mod tests {
     fn updated_at_is_required() {
         let mut lookup = TestLookup::default();
         let proj = project(&mut lookup);
-        let user = user(proj.instance.clone());
         let proj_idx = lookup.store(proj);
-        let user_idx = lookup.store(user);
 
         let err = Pipeline::<TestLookup>::builder()
             .project(proj_idx)
             .sha("0000000000000000000000000000000000000000")
             .source(PipelineSource::Schedule)
-            .user(user_idx)
             .status(PipelineStatus::Created)
             .forge_id(0)
             .url("url")
@@ -425,15 +371,12 @@ mod tests {
     fn sufficient_fields() {
         let mut lookup = TestLookup::default();
         let proj = project(&mut lookup);
-        let user = user(proj.instance.clone());
         let proj_idx = lookup.store(proj);
-        let user_idx = lookup.store(user);
 
         Pipeline::<TestLookup>::builder()
             .project(proj_idx)
             .sha("0000000000000000000000000000000000000000")
             .source(PipelineSource::Schedule)
-            .user(user_idx)
             .status(PipelineStatus::Created)
             .forge_id(0)
             .url("url")

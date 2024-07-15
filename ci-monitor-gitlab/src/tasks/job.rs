@@ -119,6 +119,22 @@ struct GitlabRunner {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum GitlabCoverage {
+    Float(f64),
+    String(String),
+}
+
+impl GitlabCoverage {
+    fn as_f64(&self) -> Option<f64> {
+        match self {
+            Self::Float(f) => Some(*f),
+            Self::String(s) => s.parse().ok(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
 struct GitlabJobDetails {
     id: u64,
     user: GitlabUser,
@@ -138,7 +154,7 @@ struct GitlabJobDetails {
     erased_at: Option<DateTime<Utc>>,
     queued_duration: Option<f64>,
     archived: bool,
-    coverage: Option<f64>,
+    coverage: Option<GitlabCoverage>,
 }
 
 pub async fn update_job<L>(
@@ -149,13 +165,13 @@ pub async fn update_job<L>(
 where
     L: DiscoverableLookup<Job<L>>,
     L: DiscoverableLookup<Pipeline<L>>,
-    L: DiscoverableLookup<Project<L>>,
     L: DiscoverableLookup<Runner<L>>,
     L: DiscoverableLookup<User<L>>,
     L: Lookup<Deployment<L>>,
     L: Lookup<Environment<L>>,
     L: Lookup<MergeRequest<L>>,
     L: Lookup<PipelineSchedule<L>>,
+    L: Lookup<Project<L>>,
     L: Lookup<RunnerHost>,
     L: Lookup<Instance>,
     L: Send + Sync,
@@ -186,17 +202,6 @@ where
         });
         None
     };
-    let project_idx = if let Some(idx) = <L as DiscoverableLookup<Project<L>>>::find(
-        forge.storage().deref(),
-        gl_job.pipeline.project_id,
-    ) {
-        Some(idx)
-    } else {
-        add_task(ForgeTask::UpdateProject {
-            project: gl_job.pipeline.project_id,
-        });
-        None
-    };
     let pipeline_idx = if let Some(idx) =
         <L as DiscoverableLookup<Pipeline<L>>>::find(forge.storage().deref(), gl_job.pipeline.id)
     {
@@ -223,17 +228,16 @@ where
         None
     };
 
-    let (user_idx, _, pipeline_idx) = if let Some((u, p, pl)) =
-        user_idx.and_then(|u| project_idx.and_then(|p| pipeline_idx.map(|pl| (u, p, pl))))
-    {
-        (u, p, pl)
-    } else {
-        add_task(ForgeTask::UpdateJob {
-            project,
-            job,
-        });
-        return Ok(outcome);
-    };
+    let (user_idx, pipeline_idx) =
+        if let Some((u, p)) = user_idx.and_then(|u| pipeline_idx.map(|p| (u, p))) {
+            (u, p)
+        } else {
+            add_task(ForgeTask::UpdateJob {
+                project,
+                job,
+            });
+            return Ok(outcome);
+        };
 
     let update = move |job: &mut Job<L>| {
         job.state = gl_job.status.into();
@@ -242,7 +246,7 @@ where
         job.erased_at = gl_job.erased_at;
         job.queued_duration = gl_job.queued_duration;
         job.archived = gl_job.archived;
-        job.coverage = gl_job.coverage;
+        job.coverage = gl_job.coverage.and_then(|c| c.as_f64());
 
         job.cim_refreshed_at = Utc::now();
     };

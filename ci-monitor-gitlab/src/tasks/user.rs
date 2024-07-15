@@ -24,7 +24,7 @@ struct GitlabUser {
     name: String,
     username: String,
     email: Option<String>,
-    public_email: String,
+    public_email: Option<String>,
     // TODO: download the avatar and store it in the blob storage.
     //avatar_url: String,
 }
@@ -55,11 +55,7 @@ where
     let update = move |user: &mut User<L>| {
         user.name = gl_user.name;
         user.handle = gl_user.username;
-        user.email = gl_user.email.or(if gl_user.public_email.is_empty() {
-            None
-        } else {
-            Some(gl_user.public_email)
-        });
+        user.email = gl_user.email.or(gl_user.public_email);
         //user.avatar = todo!();
 
         user.cim_refreshed_at = Utc::now();

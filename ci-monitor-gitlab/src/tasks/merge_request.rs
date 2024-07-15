@@ -100,13 +100,13 @@ struct GitlabMergeRequestDetails {
     web_url: String,
 
     title: String,
-    description: String,
+    description: Option<String>,
 
     state: GitlabMergeState,
 
-    source_project_id: u64,
+    source_project_id: Option<u64>,
     source_branch: String,
-    sha: String,
+    sha: Option<String>,
     target_project_id: u64,
     target_branch: String,
 }
@@ -162,20 +162,23 @@ where
         });
         None
     };
-    let source_project_idx =
-        if gl_merge_request.source_project_id == gl_merge_request.target_project_id {
+    let source_project_idx = if let Some(source_project_id) = gl_merge_request.source_project_id {
+        if source_project_id == gl_merge_request.target_project_id {
             target_project_idx.clone()
-        } else if let Some(idx) = <L as DiscoverableLookup<Project<L>>>::find(
-            forge.storage().deref(),
-            gl_merge_request.source_project_id,
-        ) {
+        } else if let Some(idx) =
+            <L as DiscoverableLookup<Project<L>>>::find(forge.storage().deref(), source_project_id)
+        {
             Some(idx)
         } else {
             add_task(ForgeTask::UpdateProject {
-                project: gl_merge_request.source_project_id,
+                project: source_project_id,
             });
             None
-        };
+        }
+    } else {
+        // Just act as if the MR came from the target project itself.
+        target_project_idx.clone()
+    };
 
     let (author_idx, target_project_idx, source_project_idx) = if let Some((a, t, s)) = author_idx
         .and_then(|a| target_project_idx.and_then(|t| source_project_idx.map(|s| (a, t, s))))
@@ -184,28 +187,24 @@ where
     } else {
         add_task(ForgeTask::UpdateMergeRequest {
             project,
-            merge_request,
+            merge_request: gl_merge_request.iid,
         });
         return Ok(outcome);
     };
 
-    add_task(ForgeTask::DiscoverMergeRequestPipelines {
-        project,
-        merge_request: gl_merge_request.iid,
-    });
-
     let update = move |merge_request: &mut MergeRequest<L>| {
         merge_request.source_branch = gl_merge_request.source_branch;
-        merge_request.sha = gl_merge_request.sha;
+        merge_request.sha = gl_merge_request.sha.unwrap_or_default();
         merge_request.target_branch = gl_merge_request.target_branch;
         merge_request.title = gl_merge_request.title;
-        merge_request.description = gl_merge_request.description;
+        merge_request.description = gl_merge_request.description.unwrap_or_default();
         merge_request.state = gl_merge_request.state.into();
 
         merge_request.cim_refreshed_at = Utc::now();
     };
 
     // Create a merge request entry.
+    let mut discover_pipelines = false;
     let merge_request = if let Some(idx) =
         <L as DiscoverableLookup<MergeRequest<L>>>::find(forge.storage().deref(), merge_request)
     {
@@ -213,12 +212,16 @@ where
             <L as Lookup<MergeRequest<L>>>::lookup(forge.storage().deref(), &idx)
         {
             let mut updated = existing.clone();
+            if updated.state == MergeRequestStatus::Open {
+                discover_pipelines = true;
+            }
             update(&mut updated);
             updated
         } else {
             return Err(ForgeError::lookup::<L, MergeRequest<L>>(&idx));
         }
     } else {
+        discover_pipelines = true;
         let mut merge_request = MergeRequest::builder()
             .id(gl_merge_request.iid)
             .source_project(source_project_idx)
@@ -233,6 +236,13 @@ where
         update(&mut merge_request);
         merge_request
     };
+
+    if discover_pipelines {
+        add_task(ForgeTask::DiscoverMergeRequestPipelines {
+            project,
+            merge_request: gl_merge_request.iid,
+        });
+    }
 
     // Store the merge request in the storage.
     forge.storage_mut().store(merge_request);

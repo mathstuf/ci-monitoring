@@ -1,0 +1,17 @@
+[package]
+name = "ci-monitor"
+version = "0.1.0"
+readme = "README.md"
+keywords = ["daemon", "ci", "monitoring"]
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+
+[dependencies]
+clap = { version = "4", features = ["cargo"] }
+ci-monitor-forge = { version = "0.1", path = "../ci-monitor-forge" }
+ci-monitor-gitlab = { version = "0.1", path = "../ci-monitor-gitlab" }
+ci-monitor-persistence = { version = "0.1", path = "../ci-monitor-persistence" }
+governor = "0.6"
+tokio = { version = "1", default-features = false, features = ["macros", "rt", "rt-multi-thread"] }

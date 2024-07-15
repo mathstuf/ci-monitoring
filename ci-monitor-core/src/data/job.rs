@@ -182,13 +182,11 @@ mod tests {
 
     fn pipeline(
         project: <TestLookup as Lookup<Project<TestLookup>>>::Index,
-        user: <TestLookup as Lookup<User<TestLookup>>>::Index,
     ) -> Pipeline<TestLookup> {
         Pipeline::builder()
             .project(project)
             .sha("0000000000000000000000000000000000000000")
             .source(PipelineSource::Schedule)
-            .user(user)
             .status(PipelineStatus::Created)
             .forge_id(0)
             .url("url")
@@ -202,10 +200,8 @@ mod tests {
     fn user_is_required() {
         let mut lookup = TestLookup::default();
         let proj = project(&mut lookup);
-        let user = user(proj.instance.clone());
-        let user_idx = lookup.store(user);
         let proj_idx = lookup.store(proj);
-        let pipeline = pipeline(proj_idx.clone(), user_idx.clone());
+        let pipeline = pipeline(proj_idx.clone());
         let pipeline_idx = lookup.store(pipeline);
 
         let err = Job::<TestLookup>::builder()
@@ -225,7 +221,7 @@ mod tests {
         let user = user(proj.instance.clone());
         let user_idx = lookup.store(user);
         let proj_idx = lookup.store(proj);
-        let pipeline = pipeline(proj_idx.clone(), user_idx.clone());
+        let pipeline = pipeline(proj_idx.clone());
         let pipeline_idx = lookup.store(pipeline);
 
         let err = Job::<TestLookup>::builder()
@@ -245,7 +241,7 @@ mod tests {
         let user = user(proj.instance.clone());
         let user_idx = lookup.store(user);
         let proj_idx = lookup.store(proj);
-        let pipeline = pipeline(proj_idx.clone(), user_idx.clone());
+        let pipeline = pipeline(proj_idx.clone());
         let pipeline_idx = lookup.store(pipeline);
 
         let err = Job::<TestLookup>::builder()
@@ -265,7 +261,7 @@ mod tests {
         let user = user(proj.instance.clone());
         let user_idx = lookup.store(user);
         let proj_idx = lookup.store(proj);
-        let pipeline = pipeline(proj_idx.clone(), user_idx.clone());
+        let pipeline = pipeline(proj_idx.clone());
         let pipeline_idx = lookup.store(pipeline);
 
         let err = Job::<TestLookup>::builder()
@@ -302,7 +298,7 @@ mod tests {
         let user = user(proj.instance.clone());
         let user_idx = lookup.store(user);
         let proj_idx = lookup.store(proj);
-        let pipeline = pipeline(proj_idx.clone(), user_idx.clone());
+        let pipeline = pipeline(proj_idx.clone());
         let pipeline_idx = lookup.store(pipeline);
 
         Job::<TestLookup>::builder()

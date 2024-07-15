@@ -213,16 +213,29 @@ struct GitlabPipelineDetails {
     sha: String,
     previous_sha: Option<String>,
     #[serde(rename = "ref")]
-    ref_: String,
+    ref_: Option<String>,
     source: GitlabPipelineSource,
-    user: GitlabUser,
+    user: Option<GitlabUser>,
     status: GitlabPipelineStatus,
-    coverage: Option<f64>,
+    coverage: Option<String>,
     web_url: String,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
     started_at: Option<DateTime<Utc>>,
     finished_at: Option<DateTime<Utc>>,
+}
+
+fn is_active(status: PipelineStatus) -> bool {
+    !matches!(
+        status,
+        PipelineStatus::Success
+            | PipelineStatus::Failed
+            | PipelineStatus::Canceled
+            | PipelineStatus::Skipped
+            | PipelineStatus::Completed
+            | PipelineStatus::Neutral
+            | PipelineStatus::Stale,
+    )
 }
 
 pub async fn update_pipeline<L>(
@@ -255,14 +268,18 @@ where
     let mut add_task = |task| outcome.additional_tasks.push(task);
     let pipeline = gl_pipeline.id;
 
-    let user_idx = if let Some(idx) =
-        <L as DiscoverableLookup<User<L>>>::find(forge.storage().deref(), gl_pipeline.user.id)
-    {
-        Some(idx)
+    let user_idx = if let Some(user) = gl_pipeline.user {
+        if let Some(idx) =
+            <L as DiscoverableLookup<User<L>>>::find(forge.storage().deref(), user.id)
+        {
+            Some(idx)
+        } else {
+            add_task(ForgeTask::UpdateUser {
+                user: user.id,
+            });
+            None
+        }
     } else {
-        add_task(ForgeTask::UpdateUser {
-            user: gl_pipeline.user.id,
-        });
         None
     };
     let project_idx = if let Some(idx) =
@@ -276,25 +293,22 @@ where
         None
     };
 
-    let (user_idx, project_idx) =
-        if let Some((u, p)) = user_idx.and_then(|u| project_idx.map(|p| (u, p))) {
-            (u, p)
-        } else {
-            add_task(ForgeTask::UpdatePipeline {
-                project,
-                pipeline,
-            });
-            return Ok(outcome);
-        };
-
-    add_task(ForgeTask::DiscoverJobs {
-        project: gl_pipeline.project_id,
-        pipeline: gl_pipeline.id,
-    });
+    let project_idx = if let Some(p) = project_idx {
+        p
+    } else {
+        add_task(ForgeTask::UpdatePipeline {
+            project,
+            pipeline,
+        });
+        return Ok(outcome);
+    };
 
     let update = move |pipeline: &mut Pipeline<L>| {
         pipeline.status = gl_pipeline.status.into();
-        pipeline.coverage = gl_pipeline.coverage;
+        pipeline.coverage = gl_pipeline.coverage.and_then(|c| c.parse().ok());
+        if user_idx.is_some() {
+            pipeline.user = user_idx;
+        }
         // TODO: How to tell if the pipeline is archived or not?
         //pipeline.archived = gl_pipeline.archived;
         pipeline.started_at = gl_pipeline.started_at;
@@ -304,11 +318,15 @@ where
     };
 
     // Create a pipeline entry.
+    let mut schedule_job_update = false;
     let pipeline = if let Some(idx) =
         <L as DiscoverableLookup<Pipeline<L>>>::find(forge.storage().deref(), pipeline)
     {
         if let Some(existing) = <L as Lookup<Pipeline<L>>>::lookup(forge.storage().deref(), &idx) {
             let mut updated = existing.clone();
+            if is_active(updated.status) || updated.status != gl_pipeline.status.into() {
+                schedule_job_update = true;
+            }
             update(&mut updated);
             updated
         } else {
@@ -320,14 +338,13 @@ where
             .project(project_idx)
             .sha(gl_pipeline.sha)
             .previous_sha(gl_pipeline.previous_sha)
-            .refname(gl_pipeline.ref_)
+            .refname(gl_pipeline.ref_.unwrap_or_else(|| "refs/UNKNOWN".into()))
             .stable_refname(Some(format!("refs/pipelines/{}", gl_pipeline.id)))
             .source(gl_pipeline.source.into())
             // TODO: How/where to obtain this information in this direction?
             //.schedule???
             //.parent_pipeline???
             //.merge_request???
-            .user(user_idx)
             .status(gl_pipeline.status.into())
             .url(gl_pipeline.web_url)
             .created_at(gl_pipeline.created_at)
@@ -335,10 +352,18 @@ where
             .name(gl_pipeline.name)
             .build()
             .unwrap();
+        schedule_job_update = true;
 
         update(&mut pipeline);
         pipeline
     };
+
+    if schedule_job_update {
+        add_task(ForgeTask::DiscoverJobs {
+            project: gl_pipeline.project_id,
+            pipeline: gl_pipeline.id,
+        });
+    }
 
     // Store the pipeline in the storage.
     forge.storage_mut().store(pipeline);

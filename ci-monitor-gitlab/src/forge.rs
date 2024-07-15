@@ -10,6 +10,7 @@ use async_trait::async_trait;
 use ci_monitor_core::data::Instance;
 use ci_monitor_core::Lookup;
 use ci_monitor_forge::{Forge, ForgeCore, ForgeError, ForgeTask, ForgeTaskOutcome};
+use ci_monitor_persistence::DiscoverableLookup;
 use gitlab::AsyncGitlab;
 
 use crate::tasks;
@@ -20,7 +21,6 @@ pub struct GitlabForge<L>
 where
     L: Lookup<Instance>,
 {
-    url: String,
     gitlab: AsyncGitlab,
     storage: RwLock<L>,
     instance_idx: <L as Lookup<Instance>>::Index,
@@ -47,16 +47,66 @@ where
     }
 }
 
+impl<L> GitlabForge<L>
+where
+    L: DiscoverableLookup<Instance>,
+{
+    /// Create a new `GitlabForge` from a GitLab client and storage.
+    pub fn new<U>(url: U, gitlab: AsyncGitlab, storage: L) -> Self
+    where
+        U: Into<String>,
+    {
+        Self::new_impl(url.into(), gitlab, storage)
+    }
+
+    fn new_impl(url: String, gitlab: AsyncGitlab, mut storage: L) -> Self {
+        let all_instance_idx = storage.all_indices();
+        let new_unique_id = all_instance_idx.len() as u64;
+        let instance_idx = all_instance_idx
+            .into_iter()
+            .filter_map(|idx| {
+                let inst = storage.lookup(&idx);
+                if let Some(inst) = inst {
+                    if inst.url == url && inst.forge == "gitlab" {
+                        Some(idx)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .next()
+            .unwrap_or_else(|| {
+                let instance = Instance::builder()
+                    .forge("gitlab")
+                    .url(url)
+                    .unique_id(new_unique_id)
+                    .build()
+                    .unwrap();
+
+                storage.store(instance)
+            });
+
+        Self {
+            gitlab,
+            storage: RwLock::new(storage),
+            instance_idx,
+        }
+    }
+}
+
 impl<L> ForgeCore for GitlabForge<L>
 where
     L: Lookup<Instance>,
 {
     fn instance(&self) -> Instance {
-        Instance::builder()
-            .forge("gitlab")
-            .url(self.url.clone())
-            .build()
+        self.storage
+            .read()
             .unwrap()
+            .lookup(&self.instance_idx)
+            .unwrap()
+            .clone()
     }
 }
 
