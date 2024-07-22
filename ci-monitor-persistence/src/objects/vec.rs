@@ -68,6 +68,18 @@ impl<T> Clone for VecIndex<T> {
     }
 }
 
+impl<T> PartialOrd for VecIndex<T> {
+    fn partial_cmp(&self, rhs: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.idx.cmp(&rhs.idx))
+    }
+}
+
+impl<T> Ord for VecIndex<T> {
+    fn cmp(&self, rhs: &Self) -> std::cmp::Ordering {
+        self.idx.cmp(&rhs.idx)
+    }
+}
+
 impl<T> VecIndex<T> {
     fn new(idx: usize) -> Self {
         Self {
