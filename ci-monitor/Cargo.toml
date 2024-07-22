@@ -9,9 +9,9 @@ repository.workspace = true
 edition.workspace = true
 
 [dependencies]
-clap = { version = "4", features = ["cargo"] }
 ci-monitor-forge = { version = "0.1", path = "../ci-monitor-forge" }
 ci-monitor-gitlab = { version = "0.1", path = "../ci-monitor-gitlab" }
 ci-monitor-persistence = { version = "0.1", path = "../ci-monitor-persistence" }
+clap = { version = "4", features = ["cargo"] }
 governor = "0.6"
 tokio = { version = "1", default-features = false, features = ["macros", "rt", "rt-multi-thread"] }
