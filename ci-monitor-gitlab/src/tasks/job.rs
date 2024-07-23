@@ -84,6 +84,8 @@ enum GitlabJobStatus {
     WaitingForResource,
     #[serde(rename = "manual")]
     Manual,
+    #[serde(rename = "scheduled")]
+    Scheduled,
 }
 
 impl From<GitlabJobStatus> for JobState {
@@ -98,6 +100,7 @@ impl From<GitlabJobStatus> for JobState {
             GitlabJobStatus::Skipped => Self::Skipped,
             GitlabJobStatus::WaitingForResource => Self::WaitingForResource,
             GitlabJobStatus::Manual => Self::Manual,
+            GitlabJobStatus::Scheduled => Self::Scheduled,
         }
     }
 }
