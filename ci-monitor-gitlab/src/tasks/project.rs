@@ -6,7 +6,7 @@
 
 use std::ops::Deref;
 
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use ci_monitor_core::data::{Instance, Project};
 use ci_monitor_core::Lookup;
 use ci_monitor_forge::{ForgeError, ForgeTask, ForgeTaskOutcome};
@@ -51,6 +51,8 @@ struct GitlabProject {
     builds_access_level: AccessLevel,
     environments_access_level: AccessLevel,
     forked_from_project: Option<ParentProject>,
+
+    updated_at: DateTime<Utc>,
 }
 
 async fn update_project_impl<L>(
@@ -66,36 +68,6 @@ where
     let mut add_task = |task| outcome.additional_tasks.push(task);
     let project = gl_project.id;
 
-    if gl_project.merge_requests_access_level.is_enabled() {
-        add_task(ForgeTask::DiscoverMergeRequests {
-            project,
-        });
-    }
-
-    if gl_project.builds_access_level.is_enabled() {
-        add_task(ForgeTask::DiscoverPipelineSchedules {
-            project,
-        });
-        add_task(ForgeTask::DiscoverPipelines {
-            project,
-        });
-    }
-
-    if gl_project.environments_access_level.is_enabled() {
-        add_task(ForgeTask::DiscoverEnvironments {
-            project,
-        });
-        add_task(ForgeTask::DiscoverDeployments {
-            project,
-        });
-    }
-
-    if let Some(parent) = gl_project.forked_from_project {
-        add_task(ForgeTask::UpdateProject {
-            project: parent.id,
-        })
-    }
-
     let update = move |project: &mut Project<L>| {
         project.name = gl_project.name;
         project.url = gl_project.web_url;
@@ -105,11 +77,11 @@ where
     };
 
     // Create a project entry.
-    let project_entry = if let Some(idx) = forge.storage().find(project) {
+    let (project_entry, update_components) = if let Some(idx) = forge.storage().find(project) {
         if let Some(existing) = <L as Lookup<Project<L>>>::lookup(forge.storage().deref(), &idx) {
             let mut updated = existing.clone();
             update(&mut updated);
-            updated
+            (updated, existing.cim_refreshed_at < gl_project.updated_at)
         } else {
             return Err(ForgeError::lookup::<L, Project<L>>(&idx));
         }
@@ -121,8 +93,40 @@ where
             .unwrap();
 
         update(&mut project);
-        project
+        (project, true)
     };
+
+    if update_components {
+        if gl_project.merge_requests_access_level.is_enabled() {
+            add_task(ForgeTask::DiscoverMergeRequests {
+                project,
+            });
+        }
+
+        if gl_project.builds_access_level.is_enabled() {
+            add_task(ForgeTask::DiscoverPipelineSchedules {
+                project,
+            });
+            add_task(ForgeTask::DiscoverPipelines {
+                project,
+            });
+        }
+
+        if gl_project.environments_access_level.is_enabled() {
+            add_task(ForgeTask::DiscoverEnvironments {
+                project,
+            });
+            add_task(ForgeTask::DiscoverDeployments {
+                project,
+            });
+        }
+
+        if let Some(parent) = gl_project.forked_from_project {
+            add_task(ForgeTask::UpdateProject {
+                project: parent.id,
+            })
+        }
+    }
 
     // Store the project in the storage.
     forge.storage_mut().store(project_entry);

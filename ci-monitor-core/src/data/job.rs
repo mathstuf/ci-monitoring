@@ -36,6 +36,8 @@ pub enum JobState {
     WaitingForResource,
     /// The job is waiting for manual interaction.
     Manual,
+    /// The job is scheduled to start in the future.
+    Scheduled,
 }
 
 /// A job within a pipeline.

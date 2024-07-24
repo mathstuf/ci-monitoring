@@ -23,56 +23,67 @@ async fn handle_tasks(
     send: UnboundedSender<ForgeTask>,
     mut recv: UnboundedReceiver<ForgeTask>,
 ) {
-    let mut tokio_tasks = Vec::new();
     let mut count = 0;
     let governor = RateLimiter::direct(Quota::per_second(NonZeroU32::new(50).unwrap()));
     let jitter = Jitter::up_to(Duration::from_secs(2));
 
-    while let Some(task) = recv.recv().await {
-        governor.until_ready_with_jitter(jitter).await;
+    loop {
+        let mut tokio_tasks = Vec::new();
 
-        println!(
-            "performing task {} ({} remaining): {:?}",
-            count,
-            recv.len(),
-            task,
-        );
-        count += 1;
+        while let Some(task) = recv.recv().await {
+            governor.until_ready_with_jitter(jitter).await;
 
-        let inner_forge = forge.clone();
-        let inner_send = send.clone();
-        let async_task = tokio::spawn(async move {
-            let res = inner_forge.run_task_async(task).await;
-            match res {
-                Ok(outcome) => {
-                    for task in outcome.additional_tasks {
-                        inner_send.send(task).unwrap();
-                    }
-                },
-                Err(err) => {
-                    println!("failed: {:?}", err);
-                },
+            println!(
+                "performing task {} ({} remaining): {:?}",
+                count,
+                recv.len(),
+                task,
+            );
+            count += 1;
+
+            let inner_forge = forge.clone();
+            let inner_send = send.clone();
+            let async_task = tokio::spawn(async move {
+                let res = inner_forge.run_task_async(task).await;
+                match res {
+                    Ok(outcome) => {
+                        for task in outcome.additional_tasks {
+                            inner_send.send(task).unwrap();
+                        }
+                    },
+                    Err(err) => {
+                        println!("failed: {:?}", err);
+                    },
+                }
+            });
+
+            tokio_tasks.push(async_task);
+
+            let complete: Vec<_> = {
+                let task_inspection = mem::take(&mut tokio_tasks);
+                let (mut incomplete, complete) = task_inspection
+                    .into_iter()
+                    .partition(|task| task.is_finished());
+                mem::swap(&mut tokio_tasks, &mut incomplete);
+                complete
+            };
+
+            for tokio_task in complete {
+                tokio_task.await.unwrap();
             }
-        });
 
-        tokio_tasks.push(async_task);
+            if recv.is_empty() {
+                break;
+            }
+        }
 
-        let complete: Vec<_> = {
-            let task_inspection = mem::take(&mut tokio_tasks);
-            let (mut incomplete, complete) = task_inspection
-                .into_iter()
-                .partition(|task| task.is_finished());
-            mem::swap(&mut tokio_tasks, &mut incomplete);
-            complete
-        };
-
-        for tokio_task in complete {
+        for tokio_task in tokio_tasks {
             tokio_task.await.unwrap();
         }
-    }
 
-    for tokio_task in tokio_tasks {
-        tokio_task.await.unwrap();
+        if recv.is_empty() {
+            break;
+        }
     }
 }
 

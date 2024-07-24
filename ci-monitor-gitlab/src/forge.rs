@@ -94,6 +94,11 @@ where
             instance_idx,
         }
     }
+
+    /// Extract the storage from the forge.
+    pub fn into_storage(self) -> L {
+        self.storage.into_inner().unwrap()
+    }
 }
 
 impl<L> ForgeCore for GitlabForge<L>
