@@ -234,6 +234,7 @@ name = "ci-monitor-persistence"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "chrono",
  "ci-monitor-core",
  "perfect-derive",
  "serde",
