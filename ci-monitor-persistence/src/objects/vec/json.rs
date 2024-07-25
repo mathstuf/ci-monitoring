@@ -9,7 +9,7 @@ use std::fmt::Debug;
 
 use chrono::{DateTime, Utc};
 use ci_monitor_core::data::{
-    Deployment, DeploymentStatus, Environment, EnvironmentState, EnvironmentTier,
+    Deployment, DeploymentStatus, Environment, EnvironmentState, EnvironmentTier, Instance,
 };
 use serde::{Deserialize, Serialize};
 
@@ -190,5 +190,31 @@ impl JsonConvert<Environment<VecLookup>> for EnvironmentJson {
         environment.cim_refreshed_at = self.cim_refreshed_at;
 
         Ok(environment)
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+pub(super) struct InstanceJson {
+    unique_id: u64,
+    forge: String,
+    url: String,
+}
+
+impl JsonConvert<Instance> for InstanceJson {
+    fn convert_to_json(o: &Instance) -> Self {
+        Self {
+            unique_id: o.unique_id,
+            forge: o.forge.clone(),
+            url: o.url.clone(),
+        }
+    }
+
+    fn create_from_json(&self) -> Result<Instance, VecStoreError> {
+        Ok(Instance::builder()
+            .unique_id(self.unique_id)
+            .forge(&self.forge)
+            .url(&self.url)
+            .build()
+            .unwrap())
     }
 }
