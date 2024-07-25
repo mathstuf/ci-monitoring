@@ -12,8 +12,8 @@ use chrono::{DateTime, Utc};
 use ci_monitor_core::data::{
     ArtifactExpiration, ArtifactKind, ArtifactState, BlobReference, ContentHash, Deployment,
     DeploymentStatus, Environment, EnvironmentState, EnvironmentTier, Instance, Job, JobArtifact,
-    JobState, MergeRequest, MergeRequestStatus, PipelineVariable, PipelineVariableType,
-    PipelineVariables,
+    JobState, MergeRequest, MergeRequestStatus, Pipeline, PipelineSource, PipelineStatus,
+    PipelineVariable, PipelineVariableType, PipelineVariables,
 };
 use serde::{Deserialize, Serialize};
 
@@ -555,5 +555,139 @@ impl JsonConvert<MergeRequest<VecLookup>> for MergeRequestJson {
         merge_request.cim_refreshed_at = self.cim_refreshed_at;
 
         Ok(merge_request)
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+pub(super) struct PipelineJson {
+    name: Option<String>,
+    project: usize,
+    sha: String,
+    previous_sha: Option<String>,
+    refname: Option<String>,
+    stable_refname: Option<String>,
+    source: String,
+    schedule: Option<usize>,
+    parent_pipeline: Option<usize>,
+    merge_request: Option<usize>,
+    variables: PipelineVariablesJson,
+    user: Option<usize>,
+    status: String,
+    coverage: Option<f64>,
+    forge_id: u64,
+    url: String,
+    archived: bool,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+    started_at: Option<DateTime<Utc>>,
+    finished_at: Option<DateTime<Utc>>,
+    cim_fetched_at: DateTime<Utc>,
+    cim_refreshed_at: DateTime<Utc>,
+}
+
+const PIPELINE_SOURCE_TABLE: &[(PipelineSource, &str)] = &[
+    (PipelineSource::Api, "api"),
+    (PipelineSource::Chat, "chat"),
+    (PipelineSource::External, "external"),
+    (
+        PipelineSource::ExternalPullRequestEvent,
+        "external_pull_request_event",
+    ),
+    (PipelineSource::MergeRequestEvent, "merge_request_event"),
+    (PipelineSource::OnDemandDastScan, "on_demand_dast_scan"),
+    (
+        PipelineSource::OnDemandDastValidation,
+        "on_demand_dast_validation",
+    ),
+    (PipelineSource::ParentPipeline, "parent_pipeline"),
+    (PipelineSource::Pipeline, "pipeline"),
+    (PipelineSource::Push, "push"),
+    (PipelineSource::Schedule, "schedule"),
+    (
+        PipelineSource::SecurityOrchestrationPolicy,
+        "security_orchestration_policy",
+    ),
+    (PipelineSource::Trigger, "trigger"),
+    (PipelineSource::Web, "web"),
+    (PipelineSource::WebIde, "web_ide"),
+];
+
+const PIPELINE_STATUS_TABLE: &[(PipelineStatus, &str)] = &[
+    (PipelineStatus::Created, "created"),
+    (PipelineStatus::WaitingForResource, "waiting_for_resource"),
+    (PipelineStatus::Preparing, "preparing"),
+    (PipelineStatus::Pending, "pending"),
+    (PipelineStatus::Running, "running"),
+    (PipelineStatus::Success, "success"),
+    (PipelineStatus::Failed, "failed"),
+    (PipelineStatus::Canceled, "canceled"),
+    (PipelineStatus::Skipped, "skipped"),
+    (PipelineStatus::Manual, "manual"),
+    (PipelineStatus::Scheduled, "scheduled"),
+    (PipelineStatus::Completed, "completed"),
+    (PipelineStatus::Neutral, "neutral"),
+    (PipelineStatus::Stale, "stale"),
+    (PipelineStatus::StartupFailure, "startup_failure"),
+    (PipelineStatus::TimedOut, "timed_out"),
+];
+
+impl JsonConvert<Pipeline<VecLookup>> for PipelineJson {
+    fn convert_to_json(o: &Pipeline<VecLookup>) -> Self {
+        Self {
+            name: o.name.clone(),
+            project: o.project.idx,
+            sha: o.sha.clone(),
+            previous_sha: o.previous_sha.clone(),
+            refname: o.refname.clone(),
+            stable_refname: o.stable_refname.clone(),
+            source: enum_to_string(PIPELINE_SOURCE_TABLE, o.source).into(),
+            schedule: o.schedule.map(|s| s.idx),
+            parent_pipeline: o.parent_pipeline.map(|p| p.idx),
+            merge_request: o.merge_request.map(|m| m.idx),
+            variables: PipelineVariablesJson::convert_to_json(&o.variables),
+            user: o.user.map(|u| u.idx),
+            status: enum_to_string(PIPELINE_STATUS_TABLE, o.status).into(),
+            coverage: o.coverage,
+            forge_id: o.forge_id,
+            url: o.url.clone(),
+            archived: o.archived,
+            created_at: o.created_at,
+            updated_at: o.updated_at,
+            started_at: o.started_at,
+            finished_at: o.finished_at,
+            cim_fetched_at: o.cim_fetched_at,
+            cim_refreshed_at: o.cim_refreshed_at,
+        }
+    }
+
+    fn create_from_json(&self) -> Result<Pipeline<VecLookup>, VecStoreError> {
+        let mut pipeline = Pipeline::builder()
+            .project(VecIndex::new(self.project))
+            .sha(&self.sha)
+            .source(enum_from_string(PIPELINE_SOURCE_TABLE, &self.source)?)
+            .status(enum_from_string(PIPELINE_STATUS_TABLE, &self.status)?)
+            .forge_id(self.forge_id)
+            .url(&self.url)
+            .created_at(self.created_at)
+            .updated_at(self.updated_at)
+            .build()
+            .unwrap();
+        pipeline.name.clone_from(&self.name);
+        pipeline.previous_sha.clone_from(&self.previous_sha);
+        pipeline.refname.clone_from(&self.refname);
+        pipeline.stable_refname.clone_from(&self.stable_refname);
+        pipeline.schedule = self.schedule.map(VecIndex::new);
+        pipeline.parent_pipeline = self.parent_pipeline.map(VecIndex::new);
+        pipeline.merge_request = self.merge_request.map(VecIndex::new);
+        pipeline.variables = self.variables.create_from_json()?;
+        pipeline.user = self.user.map(VecIndex::new);
+        pipeline.coverage = self.coverage;
+        pipeline.archived = self.archived;
+        pipeline.started_at = self.started_at;
+        pipeline.finished_at = self.finished_at;
+        pipeline.cim_fetched_at = self.cim_fetched_at;
+        pipeline.cim_refreshed_at = self.cim_refreshed_at;
+
+        Ok(pipeline)
     }
 }
