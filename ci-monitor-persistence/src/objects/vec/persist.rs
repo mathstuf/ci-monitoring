@@ -20,6 +20,14 @@ pub struct VecStore;
 #[derive(Debug, Error)]
 /// Errors which can occur when storing or loading a `VecLookup` store.
 pub enum VecStoreError {
+    /// An enumeration value was unrecognized.
+    #[error("unexpected enum string value for {}: '{}'", typename, value)]
+    InvalidEnumString {
+        /// The type of the enum being read.
+        typename: &'static str,
+        /// The value of the enum being loaded.
+        value: String,
+    },
     /// An unsupported version of the store was found.
     #[error("unsupported index version: {}", version)]
     UnsupportedVersion {
