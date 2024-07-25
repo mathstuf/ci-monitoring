@@ -13,7 +13,7 @@ use ci_monitor_core::data::{
     ArtifactExpiration, ArtifactKind, ArtifactState, BlobReference, ContentHash, Deployment,
     DeploymentStatus, Environment, EnvironmentState, EnvironmentTier, Instance, Job, JobArtifact,
     JobState, MergeRequest, MergeRequestStatus, Pipeline, PipelineSchedule, PipelineSource,
-    PipelineStatus, PipelineVariable, PipelineVariableType, PipelineVariables,
+    PipelineStatus, PipelineVariable, PipelineVariableType, PipelineVariables, Project,
 };
 use serde::{Deserialize, Serialize};
 
@@ -744,5 +744,45 @@ impl JsonConvert<PipelineSchedule<VecLookup>> for PipelineScheduleJson {
         pipeline_schedule.cim_refreshed_at = self.cim_refreshed_at;
 
         Ok(pipeline_schedule)
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+pub(super) struct ProjectJson {
+    name: String,
+    forge_id: u64,
+    url: String,
+    instance: usize,
+    instance_path: String,
+    cim_fetched_at: DateTime<Utc>,
+    cim_refreshed_at: DateTime<Utc>,
+}
+
+impl JsonConvert<Project<VecLookup>> for ProjectJson {
+    fn convert_to_json(o: &Project<VecLookup>) -> Self {
+        Self {
+            name: o.name.clone(),
+            forge_id: o.forge_id,
+            url: o.url.clone(),
+            instance: o.instance.idx,
+            instance_path: o.instance_path.clone(),
+            cim_fetched_at: o.cim_fetched_at,
+            cim_refreshed_at: o.cim_refreshed_at,
+        }
+    }
+
+    fn create_from_json(&self) -> Result<Project<VecLookup>, VecStoreError> {
+        let mut project = Project::builder()
+            .forge_id(self.forge_id)
+            .instance(VecIndex::new(self.instance))
+            .build()
+            .unwrap();
+        project.name.clone_from(&self.name);
+        project.url.clone_from(&self.url);
+        project.instance_path.clone_from(&self.instance_path);
+        project.cim_fetched_at = self.cim_fetched_at;
+        project.cim_refreshed_at = self.cim_refreshed_at;
+
+        Ok(project)
     }
 }
