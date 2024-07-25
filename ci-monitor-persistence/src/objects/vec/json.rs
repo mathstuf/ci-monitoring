@@ -14,7 +14,7 @@ use ci_monitor_core::data::{
     DeploymentStatus, Environment, EnvironmentState, EnvironmentTier, Instance, Job, JobArtifact,
     JobState, MergeRequest, MergeRequestStatus, Pipeline, PipelineSchedule, PipelineSource,
     PipelineStatus, PipelineVariable, PipelineVariableType, PipelineVariables, Project, Runner,
-    RunnerProtectionLevel, RunnerType,
+    RunnerHost, RunnerProtectionLevel, RunnerType,
 };
 use serde::{Deserialize, Serialize};
 
@@ -888,5 +888,51 @@ impl JsonConvert<Runner<VecLookup>> for RunnerJson {
         runner.cim_refreshed_at = self.cim_refreshed_at;
 
         Ok(runner)
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+pub(super) struct RunnerHostJson {
+    os: String,
+    os_version: String,
+    name: String,
+    management: String,
+    location: String,
+    estimated_cost_per_hour: Option<f64>,
+    unique_id: u64,
+    cim_fetched_at: DateTime<Utc>,
+    cim_refreshed_at: DateTime<Utc>,
+}
+
+impl JsonConvert<RunnerHost> for RunnerHostJson {
+    fn convert_to_json(o: &RunnerHost) -> Self {
+        Self {
+            os: o.os.clone(),
+            os_version: o.os_version.clone(),
+            name: o.name.clone(),
+            management: o.management.clone(),
+            location: o.location.clone(),
+            estimated_cost_per_hour: o.estimated_cost_per_hour,
+            unique_id: o.unique_id,
+            cim_fetched_at: o.cim_fetched_at,
+            cim_refreshed_at: o.cim_refreshed_at,
+        }
+    }
+
+    fn create_from_json(&self) -> Result<RunnerHost, VecStoreError> {
+        let mut runner_host = RunnerHost::builder()
+            .name(&self.name)
+            .unique_id(self.unique_id)
+            .build()
+            .unwrap();
+        runner_host.os.clone_from(&self.os);
+        runner_host.os_version.clone_from(&self.os_version);
+        runner_host.management.clone_from(&self.management);
+        runner_host.location.clone_from(&self.location);
+        runner_host.estimated_cost_per_hour = self.estimated_cost_per_hour;
+        runner_host.cim_fetched_at = self.cim_fetched_at;
+        runner_host.cim_refreshed_at = self.cim_refreshed_at;
+
+        Ok(runner_host)
     }
 }
