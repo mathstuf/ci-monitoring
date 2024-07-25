@@ -11,6 +11,13 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 /// Errors which can occur when storing or loading a `VecLookup` store.
 pub enum VecStoreError {
+    /// JSON error.
+    #[error("JSON error: {}", source)]
+    Json {
+        /// The JSON error.
+        #[from]
+        source: serde_json::Error,
+    },
     /// I/O error.
     #[error("i/o error: {}", source)]
     Io {

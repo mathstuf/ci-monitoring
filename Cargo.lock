@@ -237,6 +237,7 @@ dependencies = [
  "ci-monitor-core",
  "perfect-derive",
  "serde",
+ "serde_json",
  "tempfile",
  "thiserror",
  "toml",
