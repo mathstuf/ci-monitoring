@@ -14,7 +14,7 @@ use ci_monitor_core::data::{
     DeploymentStatus, Environment, EnvironmentState, EnvironmentTier, Instance, Job, JobArtifact,
     JobState, MergeRequest, MergeRequestStatus, Pipeline, PipelineSchedule, PipelineSource,
     PipelineStatus, PipelineVariable, PipelineVariableType, PipelineVariables, Project, Runner,
-    RunnerHost, RunnerProtectionLevel, RunnerType,
+    RunnerHost, RunnerProtectionLevel, RunnerType, User,
 };
 use serde::{Deserialize, Serialize};
 
@@ -934,5 +934,53 @@ impl JsonConvert<RunnerHost> for RunnerHostJson {
         runner_host.cim_refreshed_at = self.cim_refreshed_at;
 
         Ok(runner_host)
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+pub(super) struct UserJson {
+    handle: String,
+    name: String,
+    email: Option<String>,
+    avatar: Option<BlobReferenceJson>,
+    forge_id: u64,
+    instance: usize,
+    cim_fetched_at: DateTime<Utc>,
+    cim_refreshed_at: DateTime<Utc>,
+}
+
+impl JsonConvert<User<VecLookup>> for UserJson {
+    fn convert_to_json(o: &User<VecLookup>) -> Self {
+        Self {
+            handle: o.handle.clone(),
+            name: o.name.clone(),
+            email: o.email.clone(),
+            avatar: o.avatar.as_ref().map(BlobReferenceJson::convert_to_json),
+            forge_id: o.forge_id,
+            instance: o.instance.idx,
+            cim_fetched_at: o.cim_fetched_at,
+            cim_refreshed_at: o.cim_refreshed_at,
+        }
+    }
+
+    fn create_from_json(&self) -> Result<User<VecLookup>, VecStoreError> {
+        let mut user = User::builder()
+            .forge_id(self.forge_id)
+            .instance(VecIndex::new(self.instance))
+            .build()
+            .unwrap();
+        user.handle.clone_from(&self.handle);
+        user.name.clone_from(&self.name);
+        user.email.clone_from(&self.email);
+        user.avatar = self
+            .avatar
+            .as_ref()
+            .map(BlobReferenceJson::create_from_json)
+            .transpose()?;
+        user.instance = VecIndex::new(self.instance);
+        user.cim_fetched_at = self.cim_fetched_at;
+        user.cim_refreshed_at = self.cim_refreshed_at;
+
+        Ok(user)
     }
 }
