@@ -20,6 +20,7 @@ mod data;
 mod json;
 mod persist;
 
+pub use self::persist::VecStore;
 pub use self::persist::VecStoreError;
 
 /// Storage for CI monitoring data backed by `Vec`.

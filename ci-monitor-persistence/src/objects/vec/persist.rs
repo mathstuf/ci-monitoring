@@ -4,13 +4,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::fs::File;
 use std::io;
+use std::path::Path;
 
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+use super::VecLookup;
+
+/// Persistence implementation for `VecLookup`.
+#[non_exhaustive]
+pub struct VecStore;
 
 #[derive(Debug, Error)]
 /// Errors which can occur when storing or loading a `VecLookup` store.
 pub enum VecStoreError {
+    /// An unsupported version of the store was found.
+    #[error("unsupported index version: {}", version)]
+    UnsupportedVersion {
+        /// The unsupported version.
+        version: usize,
+    },
     /// JSON error.
     #[error("JSON error: {}", source)]
     Json {
@@ -25,4 +40,52 @@ pub enum VecStoreError {
         #[from]
         source: io::Error,
     },
+}
+
+const INDEX_NAME: &str = "vecindex.json";
+const LATEST_VERSION: usize = 0;
+
+#[derive(Deserialize, Serialize)]
+struct Counts {}
+
+#[derive(Deserialize, Serialize)]
+struct Index {
+    version: usize,
+    counts: Counts,
+}
+
+impl VecStore {
+    /// Store a `VecLookup` to a directory.
+    pub fn store(path: &Path, store: &VecLookup) -> Result<(), VecStoreError> {
+        let counts = Counts {};
+
+        // Finally, store the index file.
+        {
+            let inventory = Index {
+                version: LATEST_VERSION,
+                counts,
+            };
+
+            let index = File::create(path.join(INDEX_NAME))?;
+            serde_json::to_writer_pretty(index, &inventory)?;
+        }
+
+        Ok(())
+    }
+
+    /// Load a `VecLookup` from a directory.
+    pub fn load(path: &Path) -> Result<VecLookup, VecStoreError> {
+        let index = File::open(path.join(INDEX_NAME))?;
+        let index: Index = serde_json::from_reader(index)?;
+        if index.version != LATEST_VERSION {
+            return Err(VecStoreError::UnsupportedVersion {
+                version: index.version,
+            });
+        }
+        let counts = index.counts;
+
+        let store = VecLookup::default();
+
+        Ok(store)
+    }
 }

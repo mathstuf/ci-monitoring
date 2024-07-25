@@ -31,4 +31,5 @@ pub use self::objects::ArcLookup;
 
 pub use self::objects::VecIndex;
 pub use self::objects::VecLookup;
+pub use self::objects::VecStore;
 pub use self::objects::VecStoreError;

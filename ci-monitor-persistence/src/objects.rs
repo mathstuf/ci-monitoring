@@ -12,4 +12,5 @@ pub use arc::ArcLookup;
 
 pub use vec::VecIndex;
 pub use vec::VecLookup;
+pub use vec::VecStore;
 pub use vec::VecStoreError;
