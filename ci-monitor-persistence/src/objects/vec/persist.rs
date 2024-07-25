@@ -6,13 +6,14 @@
 
 use std::fs::{self, File};
 use std::io;
+use std::iter;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use super::data::JsonStorable;
-use super::VecLookup;
+use super::{VecIndex, VecLookup};
 
 /// Persistence implementation for `VecLookup`.
 #[non_exhaustive]
@@ -147,6 +148,35 @@ impl VecStore {
         Ok(())
     }
 
+    fn restore<T>(path: PathBuf, count: usize) -> Result<Vec<T>, VecStoreError>
+    where
+        T: JsonStorable,
+    {
+        let mut vec = Vec::with_capacity(count);
+
+        for (i, ()) in iter::repeat(()).enumerate().take(count) {
+            let path = path.join(format!("{}.json", i));
+            let file = File::open(path)?;
+            let json = serde_json::from_reader(file)?;
+
+            vec.push(T::from_json(json)?);
+        }
+
+        Ok(vec)
+    }
+
+    #[allow(clippy::ptr_arg)] // Ensure we're dealing with the entire set of entities.
+    fn verify<T>(store: &VecLookup, objects: &Vec<T>) -> Result<(), VecStoreError>
+    where
+        T: JsonStorable,
+    {
+        for (i, o) in objects.iter().enumerate() {
+            o.validate_indices(VecIndex::new(i), store)?;
+        }
+
+        Ok(())
+    }
+
     /// Load a `VecLookup` from a directory.
     pub fn load(path: &Path) -> Result<VecLookup, VecStoreError> {
         let index = File::open(path.join(INDEX_NAME))?;
@@ -158,7 +188,36 @@ impl VecStore {
         }
         let counts = index.counts;
 
-        let store = VecLookup::default();
+        let store = VecLookup {
+            deployments: Self::restore(path.join("deployments"), counts.deployments)?,
+            environments: Self::restore(path.join("environments"), counts.environments)?,
+            instances: Self::restore(path.join("instances"), counts.instances)?,
+            jobs: Self::restore(path.join("jobs"), counts.jobs)?,
+            job_artifacts: Self::restore(path.join("job_artifacts"), counts.job_artifacts)?,
+            merge_requests: Self::restore(path.join("merge_requests"), counts.merge_requests)?,
+            pipelines: Self::restore(path.join("pipelines"), counts.pipelines)?,
+            pipeline_schedules: Self::restore(
+                path.join("pipeline_schedules"),
+                counts.pipeline_schedules,
+            )?,
+            projects: Self::restore(path.join("projects"), counts.projects)?,
+            runners: Self::restore(path.join("runners"), counts.runners)?,
+            runner_hosts: Self::restore(path.join("runner_hosts"), counts.runner_hosts)?,
+            users: Self::restore(path.join("users"), counts.users)?,
+        };
+
+        Self::verify(&store, &store.deployments)?;
+        Self::verify(&store, &store.environments)?;
+        Self::verify(&store, &store.instances)?;
+        Self::verify(&store, &store.jobs)?;
+        Self::verify(&store, &store.job_artifacts)?;
+        Self::verify(&store, &store.merge_requests)?;
+        Self::verify(&store, &store.pipelines)?;
+        Self::verify(&store, &store.pipeline_schedules)?;
+        Self::verify(&store, &store.projects)?;
+        Self::verify(&store, &store.runners)?;
+        Self::verify(&store, &store.runner_hosts)?;
+        Self::verify(&store, &store.users)?;
 
         Ok(store)
     }
