@@ -8,7 +8,9 @@ use std::any;
 use std::fmt::Debug;
 
 use chrono::{DateTime, Utc};
-use ci_monitor_core::data::{Deployment, DeploymentStatus};
+use ci_monitor_core::data::{
+    Deployment, DeploymentStatus, Environment, EnvironmentState, EnvironmentTier,
+};
 use serde::{Deserialize, Serialize};
 
 use super::{VecIndex, VecLookup, VecStoreError};
@@ -122,5 +124,71 @@ impl JsonConvert<Deployment<VecLookup>> for DeploymentJson {
         deployment.cim_refreshed_at = self.cim_refreshed_at;
 
         Ok(deployment)
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+pub(super) struct EnvironmentJson {
+    name: String,
+    external_url: String,
+    state: String,
+    tier: String,
+    forge_id: u64,
+    project: usize,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+
+    auto_stop_at: Option<DateTime<Utc>>,
+    cim_fetched_at: DateTime<Utc>,
+    cim_refreshed_at: DateTime<Utc>,
+}
+
+const ENVIRONMENT_STATE_TABLE: &[(EnvironmentState, &str)] = &[
+    (EnvironmentState::Available, "available"),
+    (EnvironmentState::Stopping, "stopping"),
+    (EnvironmentState::Stopped, "stopped"),
+];
+
+const ENVIRONMENT_TIER_TABLE: &[(EnvironmentTier, &str)] = &[
+    (EnvironmentTier::Production, "production"),
+    (EnvironmentTier::Staging, "staging"),
+    (EnvironmentTier::Testing, "testing"),
+    (EnvironmentTier::Development, "development"),
+    (EnvironmentTier::Other, "other"),
+];
+
+impl JsonConvert<Environment<VecLookup>> for EnvironmentJson {
+    fn convert_to_json(o: &Environment<VecLookup>) -> Self {
+        Self {
+            name: o.name.clone(),
+            external_url: o.external_url.clone(),
+            state: enum_to_string(ENVIRONMENT_STATE_TABLE, o.state).into(),
+            tier: enum_to_string(ENVIRONMENT_TIER_TABLE, o.tier).into(),
+            forge_id: o.forge_id,
+            project: o.project.idx,
+            created_at: o.created_at,
+            updated_at: o.updated_at,
+            auto_stop_at: o.auto_stop_at,
+            cim_fetched_at: o.cim_fetched_at,
+            cim_refreshed_at: o.cim_refreshed_at,
+        }
+    }
+
+    fn create_from_json(&self) -> Result<Environment<VecLookup>, VecStoreError> {
+        let mut environment = Environment::builder()
+            .name(&self.name)
+            .state(enum_from_string(ENVIRONMENT_STATE_TABLE, &self.state)?)
+            .tier(enum_from_string(ENVIRONMENT_TIER_TABLE, &self.tier)?)
+            .forge_id(self.forge_id)
+            .project(VecIndex::new(self.project))
+            .created_at(self.created_at)
+            .updated_at(self.updated_at)
+            .build()
+            .unwrap();
+        environment.auto_stop_at = self.auto_stop_at;
+        environment.cim_fetched_at = self.cim_fetched_at;
+        environment.cim_refreshed_at = self.cim_refreshed_at;
+
+        Ok(environment)
     }
 }
