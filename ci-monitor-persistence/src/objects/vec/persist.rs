@@ -4,12 +4,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod arc;
-mod vec;
+use std::io;
 
-pub use arc::ArcIndex;
-pub use arc::ArcLookup;
+use thiserror::Error;
 
-pub use vec::VecIndex;
-pub use vec::VecLookup;
-pub use vec::VecStoreError;
+#[derive(Debug, Error)]
+/// Errors which can occur when storing or loading a `VecLookup` store.
+pub enum VecStoreError {
+    /// I/O error.
+    #[error("i/o error: {}", source)]
+    Io {
+        /// The error.
+        #[from]
+        source: io::Error,
+    },
+}
