@@ -12,7 +12,8 @@ use chrono::{DateTime, Utc};
 use ci_monitor_core::data::{
     ArtifactExpiration, ArtifactKind, ArtifactState, BlobReference, ContentHash, Deployment,
     DeploymentStatus, Environment, EnvironmentState, EnvironmentTier, Instance, Job, JobArtifact,
-    JobState, PipelineVariable, PipelineVariableType, PipelineVariables,
+    JobState, MergeRequest, MergeRequestStatus, PipelineVariable, PipelineVariableType,
+    PipelineVariables,
 };
 use serde::{Deserialize, Serialize};
 
@@ -487,5 +488,72 @@ impl JsonConvert<JobArtifact<VecLookup>> for JobArtifactJson {
             .transpose()?;
 
         Ok(job_artifact)
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+pub(super) struct MergeRequestJson {
+    id: u64,
+    source_project: usize,
+    source_branch: String,
+    sha: String,
+    target_project: usize,
+    target_branch: String,
+    forge_id: u64,
+    title: String,
+    description: String,
+    state: String,
+    author: usize,
+    url: String,
+    cim_fetched_at: DateTime<Utc>,
+    cim_refreshed_at: DateTime<Utc>,
+}
+
+const MERGE_REQUEST_STATUS_TABLE: &[(MergeRequestStatus, &str)] = &[
+    (MergeRequestStatus::Open, "open"),
+    (MergeRequestStatus::Closed, "closed"),
+    (MergeRequestStatus::Merged, "merged"),
+];
+
+impl JsonConvert<MergeRequest<VecLookup>> for MergeRequestJson {
+    fn convert_to_json(o: &MergeRequest<VecLookup>) -> Self {
+        Self {
+            id: o.id,
+            source_project: o.source_project.idx,
+            source_branch: o.source_branch.clone(),
+            sha: o.sha.clone(),
+            target_project: o.target_project.idx,
+            target_branch: o.target_branch.clone(),
+            forge_id: o.forge_id,
+            title: o.title.clone(),
+            description: o.description.clone(),
+            state: enum_to_string(MERGE_REQUEST_STATUS_TABLE, o.state).into(),
+            author: o.author.idx,
+            url: o.url.clone(),
+            cim_fetched_at: o.cim_fetched_at,
+            cim_refreshed_at: o.cim_refreshed_at,
+        }
+    }
+
+    fn create_from_json(&self) -> Result<MergeRequest<VecLookup>, VecStoreError> {
+        let mut merge_request = MergeRequest::builder()
+            .id(self.id)
+            .source_project(VecIndex::new(self.source_project))
+            .target_project(VecIndex::new(self.target_project))
+            .forge_id(self.forge_id)
+            .state(enum_from_string(MERGE_REQUEST_STATUS_TABLE, &self.state)?)
+            .author(VecIndex::new(self.author))
+            .url(&self.url)
+            .build()
+            .unwrap();
+        merge_request.source_branch.clone_from(&self.source_branch);
+        merge_request.sha.clone_from(&self.sha);
+        merge_request.target_branch.clone_from(&self.target_branch);
+        merge_request.title.clone_from(&self.title);
+        merge_request.description.clone_from(&self.description);
+        merge_request.cim_fetched_at = self.cim_fetched_at;
+        merge_request.cim_refreshed_at = self.cim_refreshed_at;
+
+        Ok(merge_request)
     }
 }
