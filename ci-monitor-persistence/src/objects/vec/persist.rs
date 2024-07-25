@@ -4,13 +4,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::fs::File;
+use std::fs::{self, File};
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use super::data::JsonStorable;
 use super::VecLookup;
 
 /// Persistence implementation for `VecLookup`.
@@ -72,7 +73,20 @@ const INDEX_NAME: &str = "vecindex.json";
 const LATEST_VERSION: usize = 0;
 
 #[derive(Deserialize, Serialize)]
-struct Counts {}
+struct Counts {
+    deployments: usize,
+    environments: usize,
+    instances: usize,
+    jobs: usize,
+    job_artifacts: usize,
+    merge_requests: usize,
+    pipelines: usize,
+    pipeline_schedules: usize,
+    projects: usize,
+    runners: usize,
+    runner_hosts: usize,
+    users: usize,
+}
 
 #[derive(Deserialize, Serialize)]
 struct Index {
@@ -81,9 +95,43 @@ struct Index {
 }
 
 impl VecStore {
+    #[allow(clippy::ptr_arg)] // Ensure we're dealing with the entire set of entities.
+    fn persist<T>(path: PathBuf, objects: &Vec<T>) -> Result<usize, VecStoreError>
+    where
+        T: JsonStorable,
+    {
+        fs::create_dir_all(&path)?;
+
+        for (i, o) in objects.iter().enumerate() {
+            let path = path.join(format!("{}.json", i));
+            let file = File::create(path)?;
+            let json = o.to_json()?;
+
+            serde_json::to_writer_pretty(file, &json)?;
+        }
+
+        Ok(objects.len())
+    }
+
     /// Store a `VecLookup` to a directory.
     pub fn store(path: &Path, store: &VecLookup) -> Result<(), VecStoreError> {
-        let counts = Counts {};
+        let counts = Counts {
+            deployments: Self::persist(path.join("deployments"), &store.deployments)?,
+            environments: Self::persist(path.join("environments"), &store.environments)?,
+            instances: Self::persist(path.join("instances"), &store.instances)?,
+            jobs: Self::persist(path.join("jobs"), &store.jobs)?,
+            job_artifacts: Self::persist(path.join("job_artifacts"), &store.job_artifacts)?,
+            merge_requests: Self::persist(path.join("merge_requests"), &store.merge_requests)?,
+            pipelines: Self::persist(path.join("pipelines"), &store.pipelines)?,
+            pipeline_schedules: Self::persist(
+                path.join("pipeline_schedules"),
+                &store.pipeline_schedules,
+            )?,
+            projects: Self::persist(path.join("projects"), &store.projects)?,
+            runners: Self::persist(path.join("runners"), &store.runners)?,
+            runner_hosts: Self::persist(path.join("runner_hosts"), &store.runner_hosts)?,
+            users: Self::persist(path.join("users"), &store.users)?,
+        };
 
         // Finally, store the index file.
         {
