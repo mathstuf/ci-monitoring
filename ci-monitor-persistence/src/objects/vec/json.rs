@@ -10,6 +10,7 @@ use std::fmt::Debug;
 use chrono::{DateTime, Utc};
 use ci_monitor_core::data::{
     Deployment, DeploymentStatus, Environment, EnvironmentState, EnvironmentTier, Instance,
+    PipelineVariable, PipelineVariableType,
 };
 use serde::{Deserialize, Serialize};
 
@@ -216,5 +217,41 @@ impl JsonConvert<Instance> for InstanceJson {
             .url(&self.url)
             .build()
             .unwrap())
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+struct PipelineVariableJson {
+    value: String,
+    type_: String,
+    protected: bool,
+    environment: Option<String>,
+}
+
+const PIPELINE_VARIABLE_TYPE_TABLE: &[(PipelineVariableType, &str)] = &[
+    (PipelineVariableType::File, "file"),
+    (PipelineVariableType::String, "string"),
+];
+
+impl JsonConvert<PipelineVariable> for PipelineVariableJson {
+    fn convert_to_json(o: &PipelineVariable) -> Self {
+        Self {
+            value: o.value.clone(),
+            type_: enum_to_string(PIPELINE_VARIABLE_TYPE_TABLE, o.type_).into(),
+            protected: o.protected,
+            environment: o.environment.clone(),
+        }
+    }
+
+    fn create_from_json(&self) -> Result<PipelineVariable, VecStoreError> {
+        let mut pipeline_variable = PipelineVariable::builder()
+            .value(&self.value)
+            .type_(enum_from_string(PIPELINE_VARIABLE_TYPE_TABLE, &self.type_)?)
+            .build()
+            .unwrap();
+        pipeline_variable.protected = self.protected;
+        pipeline_variable.environment.clone_from(&self.environment);
+
+        Ok(pipeline_variable)
     }
 }
