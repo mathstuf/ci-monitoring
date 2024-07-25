@@ -10,8 +10,9 @@ use std::fmt::Debug;
 
 use chrono::{DateTime, Utc};
 use ci_monitor_core::data::{
-    Deployment, DeploymentStatus, Environment, EnvironmentState, EnvironmentTier, Instance, Job,
-    JobState, PipelineVariable, PipelineVariableType, PipelineVariables,
+    BlobReference, ContentHash, Deployment, DeploymentStatus, Environment, EnvironmentState,
+    EnvironmentTier, Instance, Job, JobState, PipelineVariable, PipelineVariableType,
+    PipelineVariables,
 };
 use serde::{Deserialize, Serialize};
 
@@ -373,5 +374,32 @@ impl JsonConvert<Job<VecLookup>> for JobJson {
         job.cim_refreshed_at = self.cim_refreshed_at;
 
         Ok(job)
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+struct BlobReferenceJson {
+    algo: String,
+    hash: String,
+}
+
+const CONTENT_HASH_TABLE: &[(ContentHash, &str)] = &[
+    (ContentHash::Sha256, "sha256"),
+    (ContentHash::Sha512, "sha512"),
+];
+
+impl JsonConvert<BlobReference> for BlobReferenceJson {
+    fn convert_to_json(o: &BlobReference) -> Self {
+        Self {
+            algo: enum_to_string(CONTENT_HASH_TABLE, o.algo()).into(),
+            hash: o.hash().into(),
+        }
+    }
+
+    fn create_from_json(&self) -> Result<BlobReference, VecStoreError> {
+        Ok(BlobReference::new(
+            enum_from_string(CONTENT_HASH_TABLE, &self.algo)?,
+            self.hash.clone(),
+        ))
     }
 }
