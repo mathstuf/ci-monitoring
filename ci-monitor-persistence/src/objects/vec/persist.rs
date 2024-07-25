@@ -20,6 +20,24 @@ pub struct VecStore;
 #[derive(Debug, Error)]
 /// Errors which can occur when storing or loading a `VecLookup` store.
 pub enum VecStoreError {
+    /// A loaded entity contains a reference to a non-existent entity.
+    #[error(
+        "missing index for {}@{} referenced from {}@{}",
+        missing_type,
+        missing_index,
+        from_type,
+        from_index
+    )]
+    MissingIndex {
+        /// The type of the missing entity.
+        missing_type: &'static str,
+        /// The expected index of the missing entity.
+        missing_index: usize,
+        /// The type of the entity that referenced the missing entity.
+        from_type: &'static str,
+        /// The index of the entity that referenced the missing entity.
+        from_index: usize,
+    },
     /// An enumeration value was unrecognized.
     #[error("unexpected enum string value for {}: '{}'", typename, value)]
     InvalidEnumString {

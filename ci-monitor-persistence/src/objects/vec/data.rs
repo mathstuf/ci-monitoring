@@ -30,3 +30,25 @@ pub(super) trait JsonStorable: Sized {
         Ok(())
     }
 }
+
+#[allow(clippy::ptr_arg)] // Ensure we're dealing with the entire set of entities.
+fn validate_index<T, F>(
+    from_index: &VecIndex<F>,
+    storage: &Vec<T>,
+    index: &VecIndex<T>,
+) -> Result<(), VecStoreError>
+where
+    T: Typename,
+    F: Typename,
+{
+    if storage.len() < index.idx {
+        return Err(VecStoreError::MissingIndex {
+            missing_type: T::typename(),
+            missing_index: index.idx,
+            from_type: F::typename(),
+            from_index: from_index.idx,
+        });
+    }
+
+    Ok(())
+}
