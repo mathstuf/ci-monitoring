@@ -5,12 +5,13 @@
 // except according to those terms.
 
 use std::any;
+use std::collections::BTreeMap;
 use std::fmt::Debug;
 
 use chrono::{DateTime, Utc};
 use ci_monitor_core::data::{
     Deployment, DeploymentStatus, Environment, EnvironmentState, EnvironmentTier, Instance,
-    PipelineVariable, PipelineVariableType,
+    PipelineVariable, PipelineVariableType, PipelineVariables,
 };
 use serde::{Deserialize, Serialize};
 
@@ -253,5 +254,29 @@ impl JsonConvert<PipelineVariable> for PipelineVariableJson {
         pipeline_variable.environment.clone_from(&self.environment);
 
         Ok(pipeline_variable)
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+struct PipelineVariablesJson {
+    variables: BTreeMap<String, PipelineVariableJson>,
+}
+
+impl JsonConvert<PipelineVariables> for PipelineVariablesJson {
+    fn convert_to_json(o: &PipelineVariables) -> Self {
+        Self {
+            variables: o
+                .variables
+                .iter()
+                .map(|(k, v)| (k.clone(), PipelineVariableJson::convert_to_json(v)))
+                .collect(),
+        }
+    }
+
+    fn create_from_json(&self) -> Result<PipelineVariables, VecStoreError> {
+        self.variables
+            .iter()
+            .map(|(k, v)| Ok((k.clone(), v.create_from_json()?)))
+            .collect()
     }
 }
