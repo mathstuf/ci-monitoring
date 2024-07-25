@@ -51,6 +51,8 @@ pub use job_artifact::ArtifactExpiration;
 pub use job_artifact::ArtifactKind;
 pub use job_artifact::ArtifactState;
 pub use job_artifact::JobArtifact;
+pub use job_artifact::JobArtifactBuilder;
+pub use job_artifact::JobArtifactBuilderError;
 
 pub use merge_request::MergeRequest;
 pub use merge_request::MergeRequestBuilder;
