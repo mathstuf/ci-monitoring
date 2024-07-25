@@ -10,9 +10,9 @@ use std::fmt::Debug;
 
 use chrono::{DateTime, Utc};
 use ci_monitor_core::data::{
-    BlobReference, ContentHash, Deployment, DeploymentStatus, Environment, EnvironmentState,
-    EnvironmentTier, Instance, Job, JobState, PipelineVariable, PipelineVariableType,
-    PipelineVariables,
+    ArtifactExpiration, ArtifactKind, ArtifactState, BlobReference, ContentHash, Deployment,
+    DeploymentStatus, Environment, EnvironmentState, EnvironmentTier, Instance, Job, JobArtifact,
+    JobState, PipelineVariable, PipelineVariableType, PipelineVariables,
 };
 use serde::{Deserialize, Serialize};
 
@@ -401,5 +401,91 @@ impl JsonConvert<BlobReference> for BlobReferenceJson {
             enum_from_string(CONTENT_HASH_TABLE, &self.algo)?,
             self.hash.clone(),
         ))
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+pub(super) struct JobArtifactJson {
+    state: String,
+    kind: String,
+    expire_at: String,
+    name: String,
+    blob: Option<BlobReferenceJson>,
+    size: u64,
+    unique_id: u64,
+    job: usize,
+}
+
+const ARTIFACT_EXPIRATION_TABLE: &[(ArtifactExpiration, &str)] = &[
+    (ArtifactExpiration::Unknown, "unknown"),
+    (ArtifactExpiration::Never, "never"),
+];
+
+fn artifact_expiration_to_string(ae: ArtifactExpiration) -> String {
+    if let ArtifactExpiration::At(dt) = ae {
+        let mut s = Vec::new();
+        {
+            let mut ser = serde_json::Serializer::new(&mut s);
+            dt.serialize(&mut ser).unwrap();
+        }
+        String::from_utf8_lossy(&s).into_owned()
+    } else {
+        enum_to_string(ARTIFACT_EXPIRATION_TABLE, ae).into()
+    }
+}
+
+fn artifact_expiration_from_string(s: &str) -> Result<ArtifactExpiration, VecStoreError> {
+    if let Ok(ae) = enum_from_string(ARTIFACT_EXPIRATION_TABLE, s) {
+        Ok(ae)
+    } else {
+        let mut des = serde_json::Deserializer::from_str(s);
+        let dt = DateTime::<Utc>::deserialize(&mut des)?;
+        Ok(ArtifactExpiration::At(dt))
+    }
+}
+
+const ARTIFACT_STATE_TABLE: &[(ArtifactState, &str)] = &[
+    (ArtifactState::Unknown, "unknown"),
+    (ArtifactState::Pending, "pending"),
+    (ArtifactState::Expired, "expired"),
+    (ArtifactState::Present, "present"),
+    (ArtifactState::Stored, "stored"),
+];
+
+impl JsonConvert<JobArtifact<VecLookup>> for JobArtifactJson {
+    fn convert_to_json(o: &JobArtifact<VecLookup>) -> Self {
+        Self {
+            state: enum_to_string(ARTIFACT_STATE_TABLE, o.state).into(),
+            kind: o.kind.as_str().into(),
+            expire_at: artifact_expiration_to_string(o.expire_at),
+            name: o.name.clone(),
+            blob: o.blob.as_ref().map(BlobReferenceJson::convert_to_json),
+            size: o.size,
+            unique_id: o.unique_id,
+            job: o.job.idx,
+        }
+    }
+
+    fn create_from_json(&self) -> Result<JobArtifact<VecLookup>, VecStoreError> {
+        let mut job_artifact = JobArtifact::builder()
+            .kind(
+                ArtifactKind::parse(&self.kind)
+                    .ok_or_else(|| invalid_enum_string::<ArtifactKind>(&self.kind))?,
+            )
+            .name(&self.name)
+            .size(self.size)
+            .unique_id(self.unique_id)
+            .job(VecIndex::new(self.job))
+            .build()
+            .unwrap();
+        job_artifact.state = enum_from_string(ARTIFACT_STATE_TABLE, &self.state)?;
+        job_artifact.expire_at = artifact_expiration_from_string(&self.expire_at)?;
+        job_artifact.blob = self
+            .blob
+            .as_ref()
+            .map(BlobReferenceJson::create_from_json)
+            .transpose()?;
+
+        Ok(job_artifact)
     }
 }
