@@ -13,7 +13,8 @@ use ci_monitor_core::data::{
     ArtifactExpiration, ArtifactKind, ArtifactState, BlobReference, ContentHash, Deployment,
     DeploymentStatus, Environment, EnvironmentState, EnvironmentTier, Instance, Job, JobArtifact,
     JobState, MergeRequest, MergeRequestStatus, Pipeline, PipelineSchedule, PipelineSource,
-    PipelineStatus, PipelineVariable, PipelineVariableType, PipelineVariables, Project,
+    PipelineStatus, PipelineVariable, PipelineVariableType, PipelineVariables, Project, Runner,
+    RunnerProtectionLevel, RunnerType,
 };
 use serde::{Deserialize, Serialize};
 
@@ -784,5 +785,108 @@ impl JsonConvert<Project<VecLookup>> for ProjectJson {
         project.cim_refreshed_at = self.cim_refreshed_at;
 
         Ok(project)
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+pub(super) struct RunnerJson {
+    description: String,
+    runner_type: String,
+    maximum_timeout: Option<u64>,
+    protection_level: String,
+    implementation: String,
+    version: String,
+    revision: String,
+    platform: String,
+    architecture: String,
+    tags: Vec<String>,
+    run_untagged: bool,
+    projects: Vec<usize>,
+    forge_id: u64,
+    paused: bool,
+    shared: bool,
+    online: bool,
+    locked: bool,
+    contacted_at: Option<DateTime<Utc>>,
+    maintenance_note: Option<String>,
+    instance: usize,
+    runner_host: Option<usize>,
+    cim_fetched_at: DateTime<Utc>,
+    cim_refreshed_at: DateTime<Utc>,
+}
+
+const RUNNER_TYPE_TABLE: &[(RunnerType, &str)] = &[
+    (RunnerType::Instance, "instance"),
+    (RunnerType::Group, "group"),
+    (RunnerType::Project, "project"),
+];
+
+const RUNNER_PROTECTION_LEVEL_TABLE: &[(RunnerProtectionLevel, &str)] = &[
+    (RunnerProtectionLevel::Protected, "protected"),
+    (RunnerProtectionLevel::Any, "any"),
+];
+
+impl JsonConvert<Runner<VecLookup>> for RunnerJson {
+    fn convert_to_json(o: &Runner<VecLookup>) -> Self {
+        Self {
+            description: o.description.clone(),
+            runner_type: enum_to_string(RUNNER_TYPE_TABLE, o.runner_type).into(),
+            maximum_timeout: o.maximum_timeout,
+            protection_level: enum_to_string(RUNNER_PROTECTION_LEVEL_TABLE, o.protection_level)
+                .into(),
+            implementation: o.implementation.clone(),
+            version: o.version.clone(),
+            revision: o.revision.clone(),
+            platform: o.platform.clone(),
+            architecture: o.architecture.clone(),
+            tags: o.tags.clone(),
+            run_untagged: o.run_untagged,
+            projects: o.projects.iter().map(|p| p.idx).collect(),
+            forge_id: o.forge_id,
+            paused: o.paused,
+            shared: o.shared,
+            online: o.online,
+            locked: o.locked,
+            contacted_at: o.contacted_at,
+            maintenance_note: o.maintenance_note.clone(),
+            instance: o.instance.idx,
+            runner_host: o.runner_host.map(|r| r.idx),
+            cim_fetched_at: o.cim_fetched_at,
+            cim_refreshed_at: o.cim_refreshed_at,
+        }
+    }
+
+    fn create_from_json(&self) -> Result<Runner<VecLookup>, VecStoreError> {
+        let mut runner = Runner::builder()
+            .forge_id(self.forge_id)
+            .instance(VecIndex::new(self.instance))
+            .runner_type(enum_from_string(RUNNER_TYPE_TABLE, &self.runner_type)?)
+            .protection_level(enum_from_string(
+                RUNNER_PROTECTION_LEVEL_TABLE,
+                &self.protection_level,
+            )?)
+            .build()
+            .unwrap();
+        runner.description.clone_from(&self.description);
+        runner.maximum_timeout = self.maximum_timeout;
+        runner.implementation.clone_from(&self.implementation);
+        runner.version.clone_from(&self.version);
+        runner.revision.clone_from(&self.revision);
+        runner.platform.clone_from(&self.platform);
+        runner.architecture.clone_from(&self.architecture);
+        runner.tags.clone_from(&self.tags);
+        runner.run_untagged = self.run_untagged;
+        runner.projects = self.projects.iter().map(|p| VecIndex::new(*p)).collect();
+        runner.paused = self.paused;
+        runner.shared = self.shared;
+        runner.online = self.online;
+        runner.locked = self.locked;
+        runner.contacted_at = self.contacted_at;
+        runner.maintenance_note.clone_from(&self.maintenance_note);
+        runner.runner_host = self.runner_host.map(VecIndex::new);
+        runner.cim_fetched_at = self.cim_fetched_at;
+        runner.cim_refreshed_at = self.cim_refreshed_at;
+
+        Ok(runner)
     }
 }
