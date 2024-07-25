@@ -16,6 +16,7 @@ use perfect_derive::perfect_derive;
 
 use crate::DiscoverableLookup;
 
+mod json;
 mod persist;
 
 pub use self::persist::VecStoreError;
