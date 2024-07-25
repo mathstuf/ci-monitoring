@@ -64,6 +64,14 @@ impl BlobReference {
         }
     }
 
+    /// Create a blob reference.
+    pub fn new(algo: ContentHash, hash: String) -> Self {
+        Self {
+            algo,
+            hash,
+        }
+    }
+
     /// The algorithm of the blob reference.
     pub fn algo(&self) -> ContentHash {
         self.algo
