@@ -12,8 +12,8 @@ use chrono::{DateTime, Utc};
 use ci_monitor_core::data::{
     ArtifactExpiration, ArtifactKind, ArtifactState, BlobReference, ContentHash, Deployment,
     DeploymentStatus, Environment, EnvironmentState, EnvironmentTier, Instance, Job, JobArtifact,
-    JobState, MergeRequest, MergeRequestStatus, Pipeline, PipelineSource, PipelineStatus,
-    PipelineVariable, PipelineVariableType, PipelineVariables,
+    JobState, MergeRequest, MergeRequestStatus, Pipeline, PipelineSchedule, PipelineSource,
+    PipelineStatus, PipelineVariable, PipelineVariableType, PipelineVariables,
 };
 use serde::{Deserialize, Serialize};
 
@@ -689,5 +689,60 @@ impl JsonConvert<Pipeline<VecLookup>> for PipelineJson {
         pipeline.cim_refreshed_at = self.cim_refreshed_at;
 
         Ok(pipeline)
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+pub(super) struct PipelineScheduleJson {
+    name: String,
+    project: usize,
+    ref_: String,
+    variables: PipelineVariablesJson,
+    forge_id: u64,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+    owner: usize,
+    active: bool,
+    next_run: Option<DateTime<Utc>>,
+    cim_fetched_at: DateTime<Utc>,
+    cim_refreshed_at: DateTime<Utc>,
+}
+
+impl JsonConvert<PipelineSchedule<VecLookup>> for PipelineScheduleJson {
+    fn convert_to_json(o: &PipelineSchedule<VecLookup>) -> Self {
+        Self {
+            name: o.name.clone(),
+            project: o.project.idx,
+            ref_: o.ref_.clone(),
+            variables: PipelineVariablesJson::convert_to_json(&o.variables),
+            forge_id: o.forge_id,
+            created_at: o.created_at,
+            updated_at: o.updated_at,
+            owner: o.owner.idx,
+            active: o.active,
+            next_run: o.next_run,
+            cim_fetched_at: o.cim_fetched_at,
+            cim_refreshed_at: o.cim_refreshed_at,
+        }
+    }
+
+    fn create_from_json(&self) -> Result<PipelineSchedule<VecLookup>, VecStoreError> {
+        let mut pipeline_schedule = PipelineSchedule::builder()
+            .project(VecIndex::new(self.project))
+            .ref_(&self.ref_)
+            .forge_id(self.forge_id)
+            .created_at(self.created_at)
+            .updated_at(self.updated_at)
+            .owner(VecIndex::new(self.owner))
+            .build()
+            .unwrap();
+        pipeline_schedule.name.clone_from(&self.name);
+        pipeline_schedule.variables = self.variables.create_from_json()?;
+        pipeline_schedule.active = self.active;
+        pipeline_schedule.next_run = self.next_run;
+        pipeline_schedule.cim_fetched_at = self.cim_fetched_at;
+        pipeline_schedule.cim_refreshed_at = self.cim_refreshed_at;
+
+        Ok(pipeline_schedule)
     }
 }
