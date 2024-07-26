@@ -16,6 +16,13 @@ use perfect_derive::perfect_derive;
 
 use crate::DiscoverableLookup;
 
+mod data;
+mod json;
+mod persist;
+
+pub use self::persist::VecStore;
+pub use self::persist::VecStoreError;
+
 /// Storage for CI monitoring data backed by `Vec`.
 ///
 /// Intended only for in-memory storage; no actual persistence is offered as removing data is
