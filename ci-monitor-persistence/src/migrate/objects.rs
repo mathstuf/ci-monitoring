@@ -10,8 +10,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::mem;
 
 use ci_monitor_core::data::{
-    Environment, Instance, MergeRequest, Pipeline, PipelineSchedule, Project, Runner, RunnerHost,
-    User,
+    Deployment, Environment, Instance, MergeRequest, Pipeline, PipelineSchedule, Project, Runner,
+    RunnerHost, User,
 };
 use ci_monitor_core::Lookup;
 use perfect_derive::perfect_derive;
@@ -676,12 +676,90 @@ where
     }
 }
 
+struct DeploymentMigration<'a, Source, Sink>
+where
+    Source: Lookup<Environment<Source>>,
+    Source: Lookup<Instance>,
+    Source: Lookup<MergeRequest<Source>>,
+    Source: Lookup<Pipeline<Source>>,
+    Source: Lookup<PipelineSchedule<Source>>,
+    Source: Lookup<Project<Source>>,
+    Source: Lookup<User<Source>>,
+    Sink: Lookup<Environment<Sink>>,
+    Sink: Lookup<Instance>,
+    Sink: Lookup<MergeRequest<Sink>>,
+    Sink: Lookup<Pipeline<Sink>>,
+    Sink: Lookup<PipelineSchedule<Sink>>,
+    Sink: Lookup<Project<Sink>>,
+    Sink: Lookup<User<Sink>>,
+{
+    environments: &'a IndexMap<Source, Sink, Environment<Source>, Environment<Sink>>,
+    pipelines: &'a IndexMap<Source, Sink, Pipeline<Source>, Pipeline<Sink>>,
+}
+
+impl<'a, Source, Sink> Migration<Source, Sink, Deployment<Source>, Deployment<Sink>>
+    for DeploymentMigration<'a, Source, Sink>
+where
+    Source: DiscoverableLookup<Deployment<Source>>,
+    Source: Lookup<Environment<Source>>,
+    Source: Lookup<Instance>,
+    Source: Lookup<MergeRequest<Source>>,
+    Source: Lookup<Pipeline<Source>>,
+    Source: Lookup<PipelineSchedule<Source>>,
+    Source: Lookup<Project<Source>>,
+    Source: Lookup<User<Source>>,
+    <Source as Lookup<Deployment<Source>>>::Index: Ord,
+    <Source as Lookup<Environment<Source>>>::Index: Ord,
+    <Source as Lookup<Pipeline<Source>>>::Index: Ord,
+    Sink: DiscoverableLookup<Deployment<Sink>>,
+    Sink: Lookup<Environment<Sink>>,
+    Sink: Lookup<Instance>,
+    Sink: Lookup<MergeRequest<Sink>>,
+    Sink: Lookup<Pipeline<Sink>>,
+    Sink: Lookup<PipelineSchedule<Sink>>,
+    Sink: Lookup<Project<Sink>>,
+    Sink: Lookup<User<Sink>>,
+{
+    fn migrate(
+        &self,
+        source: &Source,
+        sink: &mut Sink,
+        imap: &mut IndexMap<Source, Sink, Deployment<Source>, Deployment<Sink>>,
+    ) -> Result<(), MigrationError> {
+        for idx in source.all_indices() {
+            let entry = imap.entry(idx)?;
+            let data: Deployment<Source> = get_data(source, entry.key())?;
+
+            // TODO: check if the sink already has this `Deployment`.
+
+            let mut new_data: Deployment<Sink> = Deployment::builder()
+                .pipeline(self.pipelines.get(&data.pipeline)?)
+                .environment(self.environments.get(&data.environment)?)
+                .forge_id(data.forge_id)
+                .created_at(data.created_at)
+                .updated_at(data.updated_at)
+                .status(data.status)
+                .build()
+                .unwrap();
+            new_data.finished_at = data.finished_at;
+            new_data.cim_fetched_at = data.cim_fetched_at;
+            new_data.cim_refreshed_at = data.cim_refreshed_at;
+
+            let new_index = sink.store(new_data);
+            entry.or_insert(new_index);
+        }
+
+        Ok(())
+    }
+}
+
 /// Migrate an object store's objects into another store.
 pub fn migrate_object_store<Source, Sink>(
     source: &Source,
     sink: &mut Sink,
 ) -> Result<(), MigrationError>
 where
+    Source: DiscoverableLookup<Deployment<Source>>,
     Source: DiscoverableLookup<Environment<Source>>,
     Source: DiscoverableLookup<Instance>,
     Source: DiscoverableLookup<MergeRequest<Source>>,
@@ -691,6 +769,7 @@ where
     Source: DiscoverableLookup<Runner<Source>>,
     Source: DiscoverableLookup<RunnerHost>,
     Source: DiscoverableLookup<User<Source>>,
+    <Source as Lookup<Deployment<Source>>>::Index: Ord,
     <Source as Lookup<Environment<Source>>>::Index: Ord,
     <Source as Lookup<Instance>>::Index: Ord,
     <Source as Lookup<MergeRequest<Source>>>::Index: Ord,
@@ -700,6 +779,7 @@ where
     <Source as Lookup<Runner<Source>>>::Index: Ord,
     <Source as Lookup<RunnerHost>>::Index: Ord,
     <Source as Lookup<User<Source>>>::Index: Ord,
+    Sink: DiscoverableLookup<Deployment<Sink>>,
     Sink: DiscoverableLookup<Environment<Sink>>,
     Sink: DiscoverableLookup<Instance>,
     Sink: DiscoverableLookup<MergeRequest<Sink>>,
@@ -798,8 +878,18 @@ where
     }
 
     // Deployments
-    // Job artifacts
+    let mut deployment_map =
+        IndexMap::<Source, Sink, Deployment<Source>, Deployment<Sink>>::default();
+    {
+        let migration = DeploymentMigration {
+            environments: &mut environment_map,
+            pipelines: &mut pipeline_map,
+        };
+        migration.migrate(source, sink, &mut deployment_map)?;
+    }
+
     // Jobs
+    // Job artifacts
 
     Ok(())
 }
