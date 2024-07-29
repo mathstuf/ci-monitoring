@@ -10,8 +10,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::mem;
 
 use ci_monitor_core::data::{
-    Deployment, Environment, Instance, Job, MergeRequest, Pipeline, PipelineSchedule, Project,
-    Runner, RunnerHost, User,
+    Deployment, Environment, Instance, Job, JobArtifact, MergeRequest, Pipeline, PipelineSchedule,
+    Project, Runner, RunnerHost, User,
 };
 use ci_monitor_core::Lookup;
 use perfect_derive::perfect_derive;
@@ -861,6 +861,95 @@ where
     }
 }
 
+struct JobArtifactMigration<'a, Source, Sink>
+where
+    Source: Lookup<Deployment<Source>>,
+    Source: Lookup<Environment<Source>>,
+    Source: Lookup<Instance>,
+    Source: Lookup<Job<Source>>,
+    Source: Lookup<MergeRequest<Source>>,
+    Source: Lookup<Pipeline<Source>>,
+    Source: Lookup<PipelineSchedule<Source>>,
+    Source: Lookup<Project<Source>>,
+    Source: Lookup<Runner<Source>>,
+    Source: Lookup<RunnerHost>,
+    Source: Lookup<User<Source>>,
+    Sink: Lookup<Deployment<Sink>>,
+    Sink: Lookup<Environment<Sink>>,
+    Sink: Lookup<Instance>,
+    Sink: Lookup<Job<Sink>>,
+    Sink: Lookup<MergeRequest<Sink>>,
+    Sink: Lookup<Pipeline<Sink>>,
+    Sink: Lookup<PipelineSchedule<Sink>>,
+    Sink: Lookup<Project<Sink>>,
+    Sink: Lookup<Runner<Sink>>,
+    Sink: Lookup<RunnerHost>,
+    Sink: Lookup<User<Sink>>,
+{
+    jobs: &'a IndexMap<Source, Sink, Job<Source>, Job<Sink>>,
+}
+
+impl<'a, Source, Sink> Migration<Source, Sink, JobArtifact<Source>, JobArtifact<Sink>>
+    for JobArtifactMigration<'a, Source, Sink>
+where
+    Source: DiscoverableLookup<JobArtifact<Source>>,
+    Source: Lookup<Deployment<Source>>,
+    Source: Lookup<Environment<Source>>,
+    Source: Lookup<Instance>,
+    Source: Lookup<Job<Source>>,
+    Source: Lookup<MergeRequest<Source>>,
+    Source: Lookup<Pipeline<Source>>,
+    Source: Lookup<PipelineSchedule<Source>>,
+    Source: Lookup<Project<Source>>,
+    Source: Lookup<Runner<Source>>,
+    Source: Lookup<RunnerHost>,
+    Source: Lookup<User<Source>>,
+    <Source as Lookup<Job<Source>>>::Index: Ord,
+    <Source as Lookup<JobArtifact<Source>>>::Index: Ord,
+    Sink: DiscoverableLookup<JobArtifact<Sink>>,
+    Sink: Lookup<Deployment<Sink>>,
+    Sink: Lookup<Environment<Sink>>,
+    Sink: Lookup<Instance>,
+    Sink: Lookup<Job<Sink>>,
+    Sink: Lookup<MergeRequest<Sink>>,
+    Sink: Lookup<Pipeline<Sink>>,
+    Sink: Lookup<PipelineSchedule<Sink>>,
+    Sink: Lookup<Project<Sink>>,
+    Sink: Lookup<Runner<Sink>>,
+    Sink: Lookup<RunnerHost>,
+    Sink: Lookup<User<Sink>>,
+{
+    fn migrate(
+        &self,
+        source: &Source,
+        sink: &mut Sink,
+        imap: &mut IndexMap<Source, Sink, JobArtifact<Source>, JobArtifact<Sink>>,
+    ) -> Result<(), MigrationError> {
+        for idx in source.all_indices() {
+            let entry = imap.entry(idx.clone())?;
+            let data: JobArtifact<Source> = get_data(source, entry.key())?;
+
+            // TODO: check if the sink already has this `JobArtifact`.
+
+            let mut new_data: JobArtifact<Sink> = JobArtifact::builder()
+                .kind(data.kind)
+                .name(data.name)
+                .size(data.size)
+                .unique_id(data.unique_id)
+                .job(self.jobs.get(&data.job)?)
+                .build()
+                .unwrap();
+            new_data.expire_at = data.expire_at;
+            new_data.blob = data.blob;
+
+            let new_index = sink.store(new_data);
+            entry.or_insert(new_index);
+        }
+
+        Ok(())
+    }
+}
+
 /// Migrate an object store's objects into another store.
 pub fn migrate_object_store<Source, Sink>(
     source: &Source,
@@ -871,6 +960,7 @@ where
     Source: DiscoverableLookup<Environment<Source>>,
     Source: DiscoverableLookup<Instance>,
     Source: DiscoverableLookup<Job<Source>>,
+    Source: DiscoverableLookup<JobArtifact<Source>>,
     Source: DiscoverableLookup<MergeRequest<Source>>,
     Source: DiscoverableLookup<Pipeline<Source>>,
     Source: DiscoverableLookup<PipelineSchedule<Source>>,
@@ -882,6 +972,7 @@ where
     <Source as Lookup<Environment<Source>>>::Index: Ord,
     <Source as Lookup<Instance>>::Index: Ord,
     <Source as Lookup<Job<Source>>>::Index: Ord,
+    <Source as Lookup<JobArtifact<Source>>>::Index: Ord,
     <Source as Lookup<MergeRequest<Source>>>::Index: Ord,
     <Source as Lookup<Pipeline<Source>>>::Index: Ord,
     <Source as Lookup<PipelineSchedule<Source>>>::Index: Ord,
@@ -893,6 +984,7 @@ where
     Sink: DiscoverableLookup<Environment<Sink>>,
     Sink: DiscoverableLookup<Instance>,
     Sink: DiscoverableLookup<Job<Sink>>,
+    Sink: DiscoverableLookup<JobArtifact<Sink>>,
     Sink: DiscoverableLookup<MergeRequest<Sink>>,
     Sink: DiscoverableLookup<Pipeline<Sink>>,
     Sink: DiscoverableLookup<PipelineSchedule<Sink>>,
@@ -1012,6 +1104,14 @@ where
     }
 
     // Job artifacts
+    let mut job_artifact_map =
+        IndexMap::<Source, Sink, JobArtifact<Source>, JobArtifact<Sink>>::default();
+    {
+        let migration = JobArtifactMigration {
+            jobs: &mut job_map,
+        };
+        migration.migrate(source, sink, &mut job_artifact_map)?;
+    }
 
     Ok(())
 }
