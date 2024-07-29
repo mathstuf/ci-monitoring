@@ -20,6 +20,8 @@ pub enum MigrationError {
     DanglingSourceIndex { type_: &'static str, index: String },
     #[error("duplicate source index of type {}: '{}'", type_, index)]
     DuplicateSourceIndex { type_: &'static str, index: String },
+    #[error("missing source data of type {} at index '{}'", type_, index)]
+    MissingData { type_: &'static str, index: String },
 }
 
 impl MigrationError {
@@ -38,6 +40,16 @@ impl MigrationError {
         L: Lookup<T>,
     {
         Self::DuplicateSourceIndex {
+            type_: any::type_name::<T>(),
+            index: format!("{:?}", index),
+        }
+    }
+
+    fn missing_data<L, T>(index: &<L as Lookup<T>>::Index) -> Self
+    where
+        L: Lookup<T>,
+    {
+        Self::MissingData {
             type_: any::type_name::<T>(),
             index: format!("{:?}", index),
         }
@@ -104,6 +116,20 @@ where
         sink: &mut Sink,
         imap: &mut IndexMap<Source, Sink, T, U>,
     ) -> Result<(), MigrationError>;
+}
+
+fn get_data<Source, T>(
+    source: &Source,
+    idx: &<Source as Lookup<T>>::Index,
+) -> Result<T, MigrationError>
+where
+    Source: Lookup<T>,
+    T: Clone,
+{
+    source
+        .lookup(idx)
+        .ok_or_else(|| MigrationError::missing_data::<Source, T>(idx))
+        .cloned()
 }
 
 /// Migrate an object store's objects into another store.
