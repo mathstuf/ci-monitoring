@@ -12,6 +12,7 @@
 
 mod blob;
 mod discoverable;
+mod migrate;
 mod objects;
 
 pub use self::blob::BlobPersistence;
@@ -25,6 +26,8 @@ pub use self::blob::filesystem::Sharding;
 pub use self::blob::filesystem::ShardingError;
 
 pub use self::discoverable::DiscoverableLookup;
+
+pub use self::migrate::migrate_object_store;
 
 pub use self::objects::ArcIndex;
 pub use self::objects::ArcLookup;
