@@ -8,7 +8,7 @@ use std::any;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 
-use ci_monitor_core::data::Instance;
+use ci_monitor_core::data::{Instance, RunnerHost};
 use ci_monitor_core::Lookup;
 use perfect_derive::perfect_derive;
 use thiserror::Error;
@@ -161,6 +161,34 @@ where
     }
 }
 
+struct RunnerHostMigration {}
+
+impl<Source, Sink> Migration<Source, Sink, RunnerHost, RunnerHost> for RunnerHostMigration
+where
+    Source: DiscoverableLookup<RunnerHost>,
+    <Source as Lookup<RunnerHost>>::Index: Ord,
+    Sink: DiscoverableLookup<RunnerHost>,
+{
+    fn migrate(
+        &self,
+        source: &Source,
+        sink: &mut Sink,
+        imap: &mut IndexMap<Source, Sink, RunnerHost, RunnerHost>,
+    ) -> Result<(), MigrationError> {
+        for idx in source.all_indices() {
+            let entry = imap.entry(idx)?;
+            let data = get_data(source, entry.key())?;
+
+            // TODO: check if the sink already has this `RunnerHost`.
+
+            let new_index = sink.store(data.clone());
+            entry.or_insert(new_index);
+        }
+
+        Ok(())
+    }
+}
+
 /// Migrate an object store's objects into another store.
 pub fn migrate_object_store<Source, Sink>(
     source: &Source,
@@ -168,14 +196,24 @@ pub fn migrate_object_store<Source, Sink>(
 ) -> Result<(), MigrationError>
 where
     Source: DiscoverableLookup<Instance>,
+    Source: DiscoverableLookup<RunnerHost>,
     <Source as Lookup<Instance>>::Index: Ord,
+    <Source as Lookup<RunnerHost>>::Index: Ord,
     Sink: DiscoverableLookup<Instance>,
+    Sink: DiscoverableLookup<RunnerHost>,
 {
     // Instances
     let mut instance_map = IndexMap::<Source, Sink, Instance>::default();
     {
         let migration = InstanceMigration {};
         migration.migrate(source, sink, &mut instance_map)?;
+    }
+
+    // Runner hosts
+    let mut runner_host_map = IndexMap::<Source, Sink, RunnerHost>::default();
+    {
+        let migration = RunnerHostMigration {};
+        migration.migrate(source, sink, &mut runner_host_map)?;
     }
 
     // Deployments
@@ -186,7 +224,6 @@ where
     // Pipeline schedules
     // Pipelines
     // Projects
-    // Runner hosts
     // Runners
     // Users
 
