@@ -10,8 +10,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::mem;
 
 use ci_monitor_core::data::{
-    Deployment, Environment, Instance, MergeRequest, Pipeline, PipelineSchedule, Project, Runner,
-    RunnerHost, User,
+    Deployment, Environment, Instance, Job, MergeRequest, Pipeline, PipelineSchedule, Project,
+    Runner, RunnerHost, User,
 };
 use ci_monitor_core::Lookup;
 use perfect_derive::perfect_derive;
@@ -753,6 +753,114 @@ where
     }
 }
 
+struct JobMigration<'a, Source, Sink>
+where
+    Source: Lookup<Deployment<Source>>,
+    Source: Lookup<Environment<Source>>,
+    Source: Lookup<Instance>,
+    Source: Lookup<MergeRequest<Source>>,
+    Source: Lookup<Pipeline<Source>>,
+    Source: Lookup<PipelineSchedule<Source>>,
+    Source: Lookup<Project<Source>>,
+    Source: Lookup<Runner<Source>>,
+    Source: Lookup<RunnerHost>,
+    Source: Lookup<User<Source>>,
+    Sink: Lookup<Deployment<Sink>>,
+    Sink: Lookup<Environment<Sink>>,
+    Sink: Lookup<Instance>,
+    Sink: Lookup<MergeRequest<Sink>>,
+    Sink: Lookup<Pipeline<Sink>>,
+    Sink: Lookup<PipelineSchedule<Sink>>,
+    Sink: Lookup<Project<Sink>>,
+    Sink: Lookup<Runner<Sink>>,
+    Sink: Lookup<RunnerHost>,
+    Sink: Lookup<User<Sink>>,
+{
+    deployments: &'a IndexMap<Source, Sink, Deployment<Source>, Deployment<Sink>>,
+    pipelines: &'a IndexMap<Source, Sink, Pipeline<Source>, Pipeline<Sink>>,
+    runners: &'a IndexMap<Source, Sink, Runner<Source>, Runner<Sink>>,
+    users: &'a IndexMap<Source, Sink, User<Source>, User<Sink>>,
+}
+
+impl<'a, Source, Sink> Migration<Source, Sink, Job<Source>, Job<Sink>>
+    for JobMigration<'a, Source, Sink>
+where
+    Source: DiscoverableLookup<Job<Source>>,
+    Source: Lookup<Deployment<Source>>,
+    Source: Lookup<Environment<Source>>,
+    Source: Lookup<Instance>,
+    Source: Lookup<MergeRequest<Source>>,
+    Source: Lookup<Pipeline<Source>>,
+    Source: Lookup<PipelineSchedule<Source>>,
+    Source: Lookup<Project<Source>>,
+    Source: Lookup<Runner<Source>>,
+    Source: Lookup<RunnerHost>,
+    Source: Lookup<User<Source>>,
+    <Source as Lookup<Deployment<Source>>>::Index: Ord,
+    <Source as Lookup<Job<Source>>>::Index: Ord,
+    <Source as Lookup<Pipeline<Source>>>::Index: Ord,
+    <Source as Lookup<Runner<Source>>>::Index: Ord,
+    <Source as Lookup<User<Source>>>::Index: Ord,
+    Sink: DiscoverableLookup<Job<Sink>>,
+    Sink: Lookup<Deployment<Sink>>,
+    Sink: Lookup<Environment<Sink>>,
+    Sink: Lookup<Instance>,
+    Sink: Lookup<MergeRequest<Sink>>,
+    Sink: Lookup<Pipeline<Sink>>,
+    Sink: Lookup<PipelineSchedule<Sink>>,
+    Sink: Lookup<Project<Sink>>,
+    Sink: Lookup<Runner<Sink>>,
+    Sink: Lookup<RunnerHost>,
+    Sink: Lookup<User<Sink>>,
+{
+    fn migrate(
+        &self,
+        source: &Source,
+        sink: &mut Sink,
+        imap: &mut IndexMap<Source, Sink, Job<Source>, Job<Sink>>,
+    ) -> Result<(), MigrationError> {
+        for idx in source.all_indices() {
+            let entry = imap.entry(idx.clone())?;
+            let data: Job<Source> = get_data(source, entry.key())?;
+
+            // TODO: check if the sink already has this `Job`.
+
+            let mut new_data: Job<Sink> = Job::builder()
+                .user(self.users.get(&data.user)?)
+                .state(data.state)
+                .created_at(data.created_at)
+                .forge_id(data.forge_id)
+                .pipeline(self.pipelines.get(&data.pipeline)?)
+                .build()
+                .unwrap();
+            new_data.name = data.name;
+            new_data.stage = data.stage;
+            new_data.allow_failure = data.allow_failure;
+            new_data.tags = data.tags;
+            new_data.variables = data.variables;
+            new_data.started_at = data.started_at;
+            new_data.finished_at = data.finished_at;
+            new_data.erased_at = data.erased_at;
+            new_data.queued_duration = data.queued_duration;
+            new_data.runner = data.runner.map(|idx| self.runners.get(&idx)).transpose()?;
+            new_data.deployment = data
+                .deployment
+                .map(|idx| self.deployments.get(&idx))
+                .transpose()?;
+            new_data.archived = data.archived;
+            new_data.url = data.url;
+            new_data.coverage = data.coverage;
+            new_data.cim_fetched_at = data.cim_fetched_at;
+            new_data.cim_refreshed_at = data.cim_refreshed_at;
+
+            let new_index = sink.store(new_data);
+            entry.or_insert(new_index);
+        }
+
+        Ok(())
+    }
+}
+
 /// Migrate an object store's objects into another store.
 pub fn migrate_object_store<Source, Sink>(
     source: &Source,
@@ -762,6 +870,7 @@ where
     Source: DiscoverableLookup<Deployment<Source>>,
     Source: DiscoverableLookup<Environment<Source>>,
     Source: DiscoverableLookup<Instance>,
+    Source: DiscoverableLookup<Job<Source>>,
     Source: DiscoverableLookup<MergeRequest<Source>>,
     Source: DiscoverableLookup<Pipeline<Source>>,
     Source: DiscoverableLookup<PipelineSchedule<Source>>,
@@ -772,6 +881,7 @@ where
     <Source as Lookup<Deployment<Source>>>::Index: Ord,
     <Source as Lookup<Environment<Source>>>::Index: Ord,
     <Source as Lookup<Instance>>::Index: Ord,
+    <Source as Lookup<Job<Source>>>::Index: Ord,
     <Source as Lookup<MergeRequest<Source>>>::Index: Ord,
     <Source as Lookup<Pipeline<Source>>>::Index: Ord,
     <Source as Lookup<PipelineSchedule<Source>>>::Index: Ord,
@@ -782,6 +892,7 @@ where
     Sink: DiscoverableLookup<Deployment<Sink>>,
     Sink: DiscoverableLookup<Environment<Sink>>,
     Sink: DiscoverableLookup<Instance>,
+    Sink: DiscoverableLookup<Job<Sink>>,
     Sink: DiscoverableLookup<MergeRequest<Sink>>,
     Sink: DiscoverableLookup<Pipeline<Sink>>,
     Sink: DiscoverableLookup<PipelineSchedule<Sink>>,
@@ -889,6 +1000,17 @@ where
     }
 
     // Jobs
+    let mut job_map = IndexMap::<Source, Sink, Job<Source>, Job<Sink>>::default();
+    {
+        let migration = JobMigration {
+            deployments: &mut deployment_map,
+            pipelines: &mut pipeline_map,
+            runners: &mut runner_map,
+            users: &mut user_map,
+        };
+        migration.migrate(source, sink, &mut job_map)?;
+    }
+
     // Job artifacts
 
     Ok(())
