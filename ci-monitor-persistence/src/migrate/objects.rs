@@ -8,6 +8,7 @@ use std::any;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 
+use ci_monitor_core::data::Instance;
 use ci_monitor_core::Lookup;
 use perfect_derive::perfect_derive;
 use thiserror::Error;
@@ -132,14 +133,53 @@ where
         .cloned()
 }
 
+struct InstanceMigration {}
+
+impl<Source, Sink> Migration<Source, Sink, Instance, Instance> for InstanceMigration
+where
+    Source: DiscoverableLookup<Instance>,
+    <Source as Lookup<Instance>>::Index: Ord,
+    Sink: DiscoverableLookup<Instance>,
+{
+    fn migrate(
+        &self,
+        source: &Source,
+        sink: &mut Sink,
+        imap: &mut IndexMap<Source, Sink, Instance, Instance>,
+    ) -> Result<(), MigrationError> {
+        for idx in source.all_indices() {
+            let entry = imap.entry(idx)?;
+            let data = get_data(source, entry.key())?;
+
+            // TODO: check if the sink already has this `Instance`.
+
+            let new_index = sink.store(data.clone());
+            entry.or_insert(new_index);
+        }
+
+        Ok(())
+    }
+}
+
 /// Migrate an object store's objects into another store.
 pub fn migrate_object_store<Source, Sink>(
     source: &Source,
     sink: &mut Sink,
-) -> Result<(), MigrationError> {
+) -> Result<(), MigrationError>
+where
+    Source: DiscoverableLookup<Instance>,
+    <Source as Lookup<Instance>>::Index: Ord,
+    Sink: DiscoverableLookup<Instance>,
+{
+    // Instances
+    let mut instance_map = IndexMap::<Source, Sink, Instance>::default();
+    {
+        let migration = InstanceMigration {};
+        migration.migrate(source, sink, &mut instance_map)?;
+    }
+
     // Deployments
     // Environments
-    // Instances
     // Job artifacts
     // Jobs
     // Merge requests
