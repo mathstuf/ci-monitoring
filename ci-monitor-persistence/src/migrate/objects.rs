@@ -8,7 +8,9 @@ use std::any;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 
-use ci_monitor_core::data::{Instance, MergeRequest, Project, Runner, RunnerHost, User};
+use ci_monitor_core::data::{
+    Instance, MergeRequest, PipelineSchedule, Project, Runner, RunnerHost, User,
+};
 use ci_monitor_core::Lookup;
 use perfect_derive::perfect_derive;
 use thiserror::Error;
@@ -438,6 +440,70 @@ where
     }
 }
 
+struct PipelineScheduleMigration<'a, Source, Sink>
+where
+    Source: Lookup<Instance>,
+    Source: Lookup<Project<Source>>,
+    Source: Lookup<User<Source>>,
+    Sink: Lookup<Instance>,
+    Sink: Lookup<Project<Sink>>,
+    Sink: Lookup<User<Sink>>,
+{
+    projects: &'a IndexMap<Source, Sink, Project<Source>, Project<Sink>>,
+    users: &'a IndexMap<Source, Sink, User<Source>, User<Sink>>,
+}
+
+impl<'a, Source, Sink> Migration<Source, Sink, PipelineSchedule<Source>, PipelineSchedule<Sink>>
+    for PipelineScheduleMigration<'a, Source, Sink>
+where
+    Source: DiscoverableLookup<PipelineSchedule<Source>>,
+    Source: Lookup<Instance>,
+    Source: Lookup<Project<Source>>,
+    Source: Lookup<User<Source>>,
+    <Source as Lookup<PipelineSchedule<Source>>>::Index: Ord,
+    <Source as Lookup<Project<Source>>>::Index: Ord,
+    <Source as Lookup<User<Source>>>::Index: Ord,
+    Sink: DiscoverableLookup<PipelineSchedule<Sink>>,
+    Sink: Lookup<Instance>,
+    Sink: Lookup<Project<Sink>>,
+    Sink: Lookup<User<Sink>>,
+{
+    fn migrate(
+        &self,
+        source: &Source,
+        sink: &mut Sink,
+        imap: &mut IndexMap<Source, Sink, PipelineSchedule<Source>, PipelineSchedule<Sink>>,
+    ) -> Result<(), MigrationError> {
+        for idx in source.all_indices() {
+            let entry = imap.entry(idx)?;
+            let data: PipelineSchedule<Source> = get_data(source, entry.key())?;
+
+            // TODO: check if the sink already has this `PipelineSchedule`.
+
+            let mut new_data: PipelineSchedule<Sink> = PipelineSchedule::builder()
+                .project(self.projects.get(&data.project)?)
+                .ref_(data.ref_)
+                .forge_id(data.forge_id)
+                .created_at(data.created_at)
+                .updated_at(data.updated_at)
+                .owner(self.users.get(&data.owner)?)
+                .build()
+                .unwrap();
+            new_data.name = data.name;
+            new_data.variables = data.variables;
+            new_data.active = data.active;
+            new_data.next_run = data.next_run;
+            new_data.cim_fetched_at = data.cim_fetched_at;
+            new_data.cim_refreshed_at = data.cim_refreshed_at;
+
+            let new_index = sink.store(new_data);
+            entry.or_insert(new_index);
+        }
+
+        Ok(())
+    }
+}
+
 /// Migrate an object store's objects into another store.
 pub fn migrate_object_store<Source, Sink>(
     source: &Source,
@@ -446,18 +512,21 @@ pub fn migrate_object_store<Source, Sink>(
 where
     Source: DiscoverableLookup<Instance>,
     Source: DiscoverableLookup<MergeRequest<Source>>,
+    Source: DiscoverableLookup<PipelineSchedule<Source>>,
     Source: DiscoverableLookup<Project<Source>>,
     Source: DiscoverableLookup<Runner<Source>>,
     Source: DiscoverableLookup<RunnerHost>,
     Source: DiscoverableLookup<User<Source>>,
     <Source as Lookup<Instance>>::Index: Ord,
     <Source as Lookup<MergeRequest<Source>>>::Index: Ord,
+    <Source as Lookup<PipelineSchedule<Source>>>::Index: Ord,
     <Source as Lookup<Project<Source>>>::Index: Ord,
     <Source as Lookup<Runner<Source>>>::Index: Ord,
     <Source as Lookup<RunnerHost>>::Index: Ord,
     <Source as Lookup<User<Source>>>::Index: Ord,
     Sink: DiscoverableLookup<Instance>,
     Sink: DiscoverableLookup<MergeRequest<Sink>>,
+    Sink: DiscoverableLookup<PipelineSchedule<Sink>>,
     Sink: DiscoverableLookup<Project<Sink>>,
     Sink: DiscoverableLookup<Runner<Sink>>,
     Sink: DiscoverableLookup<RunnerHost>,
@@ -517,11 +586,21 @@ where
         migration.migrate(source, sink, &mut merge_request_map)?;
     }
 
+    // Pipeline schedules
+    let mut pipeline_schedule_map =
+        IndexMap::<Source, Sink, PipelineSchedule<Source>, PipelineSchedule<Sink>>::default();
+    {
+        let migration = PipelineScheduleMigration {
+            projects: &mut project_map,
+            users: &mut user_map,
+        };
+        migration.migrate(source, sink, &mut pipeline_schedule_map)?;
+    }
+
     // Deployments
     // Environments
     // Job artifacts
     // Jobs
-    // Pipeline schedules
     // Pipelines
 
     Ok(())
