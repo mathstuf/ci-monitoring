@@ -8,7 +8,7 @@ use std::any;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 
-use ci_monitor_core::data::{Instance, Project, RunnerHost, User};
+use ci_monitor_core::data::{Instance, Project, Runner, RunnerHost, User};
 use ci_monitor_core::Lookup;
 use perfect_derive::perfect_derive;
 use thiserror::Error;
@@ -288,6 +288,90 @@ where
     }
 }
 
+struct RunnerMigration<'a, Source, Sink>
+where
+    Source: Lookup<Instance>,
+    Source: Lookup<Project<Source>>,
+    Source: Lookup<RunnerHost>,
+    Sink: Lookup<Instance>,
+    Sink: Lookup<Project<Sink>>,
+    Sink: Lookup<RunnerHost>,
+{
+    instances: &'a IndexMap<Source, Sink, Instance>,
+    projects: &'a IndexMap<Source, Sink, Project<Source>, Project<Sink>>,
+    runner_hosts: &'a IndexMap<Source, Sink, RunnerHost>,
+}
+
+impl<'a, Source, Sink> Migration<Source, Sink, Runner<Source>, Runner<Sink>>
+    for RunnerMigration<'a, Source, Sink>
+where
+    Source: DiscoverableLookup<Runner<Source>>,
+    Source: Lookup<Instance>,
+    Source: Lookup<Project<Source>>,
+    Source: Lookup<RunnerHost>,
+    <Source as Lookup<Instance>>::Index: Ord,
+    <Source as Lookup<Project<Source>>>::Index: Ord,
+    <Source as Lookup<Runner<Source>>>::Index: Ord,
+    <Source as Lookup<RunnerHost>>::Index: Ord,
+    Sink: DiscoverableLookup<Runner<Sink>>,
+    Sink: Lookup<Instance>,
+    Sink: Lookup<Project<Sink>>,
+    Sink: Lookup<RunnerHost>,
+{
+    fn migrate(
+        &self,
+        source: &Source,
+        sink: &mut Sink,
+        imap: &mut IndexMap<Source, Sink, Runner<Source>, Runner<Sink>>,
+    ) -> Result<(), MigrationError> {
+        for idx in source.all_indices() {
+            let entry = imap.entry(idx)?;
+            let data: Runner<Source> = get_data(source, entry.key())?;
+
+            // TODO: check if the sink already has this `Runner`.
+
+            let mut new_data: Runner<Sink> = Runner::builder()
+                .forge_id(data.forge_id)
+                .instance(self.instances.get(&data.instance)?)
+                .runner_type(data.runner_type)
+                .protection_level(data.protection_level)
+                .build()
+                .unwrap();
+            new_data.description = data.description;
+            new_data.maximum_timeout = data.maximum_timeout;
+            new_data.implementation = data.implementation;
+            new_data.version = data.version;
+            new_data.revision = data.revision;
+            new_data.platform = data.platform;
+            new_data.architecture = data.architecture;
+            new_data.tags = data.tags;
+            new_data.run_untagged = data.run_untagged;
+            new_data.projects = data
+                .projects
+                .iter()
+                .map(|idx| self.projects.get(idx))
+                .collect::<Result<Vec<_>, _>>()?;
+            new_data.paused = data.paused;
+            new_data.shared = data.shared;
+            new_data.online = data.online;
+            new_data.locked = data.locked;
+            new_data.contacted_at = data.contacted_at;
+            new_data.maintenance_note = data.maintenance_note;
+            new_data.runner_host = data
+                .runner_host
+                .map(|idx| self.runner_hosts.get(&idx))
+                .transpose()?;
+            new_data.cim_fetched_at = data.cim_fetched_at;
+            new_data.cim_refreshed_at = data.cim_refreshed_at;
+
+            let new_index = sink.store(new_data);
+            entry.or_insert(new_index);
+        }
+
+        Ok(())
+    }
+}
+
 /// Migrate an object store's objects into another store.
 pub fn migrate_object_store<Source, Sink>(
     source: &Source,
@@ -296,14 +380,17 @@ pub fn migrate_object_store<Source, Sink>(
 where
     Source: DiscoverableLookup<Instance>,
     Source: DiscoverableLookup<Project<Source>>,
+    Source: DiscoverableLookup<Runner<Source>>,
     Source: DiscoverableLookup<RunnerHost>,
     Source: DiscoverableLookup<User<Source>>,
     <Source as Lookup<Instance>>::Index: Ord,
     <Source as Lookup<Project<Source>>>::Index: Ord,
+    <Source as Lookup<Runner<Source>>>::Index: Ord,
     <Source as Lookup<RunnerHost>>::Index: Ord,
     <Source as Lookup<User<Source>>>::Index: Ord,
     Sink: DiscoverableLookup<Instance>,
     Sink: DiscoverableLookup<Project<Sink>>,
+    Sink: DiscoverableLookup<Runner<Sink>>,
     Sink: DiscoverableLookup<RunnerHost>,
     Sink: DiscoverableLookup<User<Sink>>,
 {
@@ -339,6 +426,17 @@ where
         migration.migrate(source, sink, &mut project_map)?;
     }
 
+    // Runners
+    let mut runner_map = IndexMap::<Source, Sink, Runner<Source>, Runner<Sink>>::default();
+    {
+        let migration = RunnerMigration {
+            instances: &mut instance_map,
+            projects: &mut project_map,
+            runner_hosts: &mut runner_host_map,
+        };
+        migration.migrate(source, sink, &mut runner_map)?;
+    }
+
     // Deployments
     // Environments
     // Job artifacts
@@ -346,7 +444,6 @@ where
     // Merge requests
     // Pipeline schedules
     // Pipelines
-    // Runners
 
     Ok(())
 }
