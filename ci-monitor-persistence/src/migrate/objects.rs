@@ -8,7 +8,7 @@ use std::any;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 
-use ci_monitor_core::data::{Instance, RunnerHost};
+use ci_monitor_core::data::{Instance, RunnerHost, User};
 use ci_monitor_core::Lookup;
 use perfect_derive::perfect_derive;
 use thiserror::Error;
@@ -189,6 +189,56 @@ where
     }
 }
 
+struct UserMigration<'a, Source, Sink>
+where
+    Source: Lookup<Instance>,
+    Sink: Lookup<Instance>,
+{
+    instances: &'a IndexMap<Source, Sink, Instance>,
+}
+
+impl<'a, Source, Sink> Migration<Source, Sink, User<Source>, User<Sink>>
+    for UserMigration<'a, Source, Sink>
+where
+    Source: DiscoverableLookup<User<Source>>,
+    Source: Lookup<Instance>,
+    <Source as Lookup<Instance>>::Index: Ord,
+    <Source as Lookup<User<Source>>>::Index: Ord,
+    Sink: DiscoverableLookup<User<Sink>>,
+    Sink: Lookup<Instance>,
+{
+    fn migrate(
+        &self,
+        source: &Source,
+        sink: &mut Sink,
+        imap: &mut IndexMap<Source, Sink, User<Source>, User<Sink>>,
+    ) -> Result<(), MigrationError> {
+        for idx in source.all_indices() {
+            let entry = imap.entry(idx)?;
+            let data: User<Source> = get_data(source, entry.key())?;
+
+            // TODO: check if the sink already has this `User`.
+
+            let mut new_data: User<Sink> = User::builder()
+                .forge_id(data.forge_id)
+                .instance(self.instances.get(&data.instance)?)
+                .build()
+                .unwrap();
+            new_data.handle = data.handle;
+            new_data.name = data.name;
+            new_data.email = data.email;
+            new_data.avatar = data.avatar;
+            new_data.cim_fetched_at = data.cim_fetched_at;
+            new_data.cim_refreshed_at = data.cim_refreshed_at;
+
+            let new_index = sink.store(new_data);
+            entry.or_insert(new_index);
+        }
+
+        Ok(())
+    }
+}
+
 /// Migrate an object store's objects into another store.
 pub fn migrate_object_store<Source, Sink>(
     source: &Source,
@@ -197,10 +247,13 @@ pub fn migrate_object_store<Source, Sink>(
 where
     Source: DiscoverableLookup<Instance>,
     Source: DiscoverableLookup<RunnerHost>,
+    Source: DiscoverableLookup<User<Source>>,
     <Source as Lookup<Instance>>::Index: Ord,
     <Source as Lookup<RunnerHost>>::Index: Ord,
+    <Source as Lookup<User<Source>>>::Index: Ord,
     Sink: DiscoverableLookup<Instance>,
     Sink: DiscoverableLookup<RunnerHost>,
+    Sink: DiscoverableLookup<User<Sink>>,
 {
     // Instances
     let mut instance_map = IndexMap::<Source, Sink, Instance>::default();
@@ -216,6 +269,15 @@ where
         migration.migrate(source, sink, &mut runner_host_map)?;
     }
 
+    // Users
+    let mut user_map = IndexMap::<Source, Sink, User<Source>, User<Sink>>::default();
+    {
+        let migration = UserMigration {
+            instances: &mut instance_map,
+        };
+        migration.migrate(source, sink, &mut user_map)?;
+    }
+
     // Deployments
     // Environments
     // Job artifacts
@@ -225,7 +287,6 @@ where
     // Pipelines
     // Projects
     // Runners
-    // Users
 
     Ok(())
 }
