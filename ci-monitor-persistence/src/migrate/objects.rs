@@ -10,7 +10,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::mem;
 
 use ci_monitor_core::data::{
-    Instance, MergeRequest, Pipeline, PipelineSchedule, Project, Runner, RunnerHost, User,
+    Environment, Instance, MergeRequest, Pipeline, PipelineSchedule, Project, Runner, RunnerHost,
+    User,
 };
 use ci_monitor_core::Lookup;
 use perfect_derive::perfect_derive;
@@ -618,12 +619,70 @@ where
     }
 }
 
+struct EnvironmentMigration<'a, Source, Sink>
+where
+    Source: Lookup<Instance>,
+    Source: Lookup<Project<Source>>,
+    Sink: Lookup<Instance>,
+    Sink: Lookup<Project<Sink>>,
+{
+    projects: &'a IndexMap<Source, Sink, Project<Source>, Project<Sink>>,
+}
+
+impl<'a, Source, Sink> Migration<Source, Sink, Environment<Source>, Environment<Sink>>
+    for EnvironmentMigration<'a, Source, Sink>
+where
+    Source: DiscoverableLookup<Environment<Source>>,
+    Source: Lookup<Instance>,
+    Source: Lookup<Project<Source>>,
+    <Source as Lookup<Environment<Source>>>::Index: Ord,
+    <Source as Lookup<Project<Source>>>::Index: Ord,
+    Sink: DiscoverableLookup<Environment<Sink>>,
+    Sink: Lookup<Instance>,
+    Sink: Lookup<Project<Sink>>,
+{
+    fn migrate(
+        &self,
+        source: &Source,
+        sink: &mut Sink,
+        imap: &mut IndexMap<Source, Sink, Environment<Source>, Environment<Sink>>,
+    ) -> Result<(), MigrationError> {
+        for idx in source.all_indices() {
+            let entry = imap.entry(idx)?;
+            let data: Environment<Source> = get_data(source, entry.key())?;
+
+            // TODO: check if the sink already has this `Environment`.
+
+            let mut new_data: Environment<Sink> = Environment::builder()
+                .name(data.name)
+                .state(data.state)
+                .tier(data.tier)
+                .forge_id(data.forge_id)
+                .project(self.projects.get(&data.project)?)
+                .created_at(data.created_at)
+                .updated_at(data.updated_at)
+                .build()
+                .unwrap();
+            new_data.external_url = data.external_url;
+            new_data.auto_stop_at = data.auto_stop_at;
+            new_data.cim_fetched_at = data.cim_fetched_at;
+            new_data.cim_refreshed_at = data.cim_refreshed_at;
+
+            let new_index = sink.store(new_data);
+            entry.or_insert(new_index);
+        }
+
+        Ok(())
+    }
+}
+
 /// Migrate an object store's objects into another store.
 pub fn migrate_object_store<Source, Sink>(
     source: &Source,
     sink: &mut Sink,
 ) -> Result<(), MigrationError>
 where
+    Source: DiscoverableLookup<Environment<Source>>,
     Source: DiscoverableLookup<Instance>,
     Source: DiscoverableLookup<MergeRequest<Source>>,
     Source: DiscoverableLookup<Pipeline<Source>>,
@@ -632,6 +691,7 @@ where
     Source: DiscoverableLookup<Runner<Source>>,
     Source: DiscoverableLookup<RunnerHost>,
     Source: DiscoverableLookup<User<Source>>,
+    <Source as Lookup<Environment<Source>>>::Index: Ord,
     <Source as Lookup<Instance>>::Index: Ord,
     <Source as Lookup<MergeRequest<Source>>>::Index: Ord,
     <Source as Lookup<Pipeline<Source>>>::Index: Ord,
@@ -640,6 +700,7 @@ where
     <Source as Lookup<Runner<Source>>>::Index: Ord,
     <Source as Lookup<RunnerHost>>::Index: Ord,
     <Source as Lookup<User<Source>>>::Index: Ord,
+    Sink: DiscoverableLookup<Environment<Sink>>,
     Sink: DiscoverableLookup<Instance>,
     Sink: DiscoverableLookup<MergeRequest<Sink>>,
     Sink: DiscoverableLookup<Pipeline<Sink>>,
@@ -726,8 +787,17 @@ where
         migration.migrate(source, sink, &mut pipeline_map)?;
     }
 
-    // Deployments
     // Environments
+    let mut environment_map =
+        IndexMap::<Source, Sink, Environment<Source>, Environment<Sink>>::default();
+    {
+        let migration = EnvironmentMigration {
+            projects: &mut project_map,
+        };
+        migration.migrate(source, sink, &mut environment_map)?;
+    }
+
+    // Deployments
     // Job artifacts
     // Jobs
 
