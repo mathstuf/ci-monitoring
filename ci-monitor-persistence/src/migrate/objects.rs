@@ -12,6 +12,8 @@ use ci_monitor_core::Lookup;
 use perfect_derive::perfect_derive;
 use thiserror::Error;
 
+use crate::DiscoverableLookup;
+
 #[derive(Debug, Error)]
 pub enum MigrationError {
     #[error("dangling source index type {}: '{}'", type_, index)]
@@ -88,6 +90,20 @@ where
             ))
         }
     }
+}
+
+trait Migration<Source, Sink, T, U>
+where
+    Source: DiscoverableLookup<T>,
+    <Source as Lookup<T>>::Index: Ord,
+    Sink: DiscoverableLookup<U>,
+{
+    fn migrate(
+        &self,
+        source: &Source,
+        sink: &mut Sink,
+        imap: &mut IndexMap<Source, Sink, T, U>,
+    ) -> Result<(), MigrationError>;
 }
 
 /// Migrate an object store's objects into another store.
