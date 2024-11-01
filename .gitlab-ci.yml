@@ -37,8 +37,6 @@ clippy:build:
         - .cargo_clippy_job
         - .cargo_build_tags
         - .run_automatically
-    dependencies:
-        - cache-newest:prep
     needs:
         - cache-newest:prep
 
@@ -54,8 +52,6 @@ audit-newest:build:
         - .cargo_build_tags
         - .run_automatically
         - .cargo_audit_ignore
-    dependencies:
-        - cache-newest:prep
     needs:
         - cache-newest:prep
 
@@ -66,8 +62,6 @@ stable:build:
         - .cargo_build_tags
         - .cargo_build_artifacts
         - .run_automatically
-    dependencies:
-        - cache-newest:prep
     needs:
         - cache-newest:prep
 
@@ -78,8 +72,6 @@ stable:test:
         - .cargo_build_tags
         - .cargo_test_artifacts
         - .run_automatically
-    dependencies:
-        - stable:build
     needs:
         - stable:build
 
@@ -90,8 +82,6 @@ nightly:build:
         - .cargo_build_tags
         - .cargo_build_artifacts
         - .run_automatically
-    dependencies:
-        - cache-newest:prep
     needs:
         - cache-newest:prep
 
@@ -102,8 +92,6 @@ nightly:test:
         - .cargo_build_tags
         - .cargo_test_artifacts
         - .run_automatically
-    dependencies:
-        - nightly:build
     needs:
         - nightly:build
 
@@ -114,8 +102,6 @@ tarpaulin:build:
         - .cargo_build_tags
         - .cargo_build_artifacts
         - .run_automatically
-    dependencies:
-        - cache-newest:prep
     needs:
         - cache-newest:prep
 
@@ -125,7 +111,5 @@ tarpaulin:test:
         - .cargo_tarpaulin_test_job
         - .cargo_privileged_tags
         - .run_automatically
-    dependencies:
-        - tarpaulin:build
     needs:
         - tarpaulin:build
