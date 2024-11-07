@@ -52,6 +52,8 @@
         - cargo build --frozen $CARGO_FEATURES --all --verbose
         - cargo test --frozen $CARGO_FEATURES --all --no-run --verbose
         - ".gitlab/sccache --show-stats || :"
+    variables:
+        CARGO_INCREMENTAL: "0"
     artifacts:
         expire_in: 24h
         paths:
@@ -79,6 +81,8 @@
         - export PATH=$PWD/.gitlab:$PATH
         - cargo tarpaulin --no-run --frozen --exclude-files 'vendor/*' --ignore-panics --all --verbose --engine llvm
         - ".gitlab/sccache --show-stats || :"
+    variables:
+        CARGO_INCREMENTAL: "0"
     interruptible: true
 
 .cargo_tarpaulin_test_job:
